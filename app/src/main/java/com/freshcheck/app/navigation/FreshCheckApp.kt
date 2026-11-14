@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import com.freshcheck.app.ui.home.HomeScreen
-import com.freshcheck.app.ui.scan.ScanScreen
+import com.freshcheck.app.ui.scan.ScannerFlow
 import com.freshcheck.app.ui.myfood.MyFoodScreen
 import com.freshcheck.app.ui.insights.InsightsScreen
 import com.freshcheck.app.ui.profile.ProfileScreen
@@ -38,6 +38,12 @@ fun FreshCheckApp() {
     val holder = rememberSaveableStateHolder()
     val scan: (String) -> Unit = { mode = it; selected = Destination.Scan.name }
     val insights: (String) -> Unit = { topic = it; selected = Destination.Insights.name }
+    if (selected == Destination.Scan.name) {
+        ScannerFlow(mode, { mode = it },
+            onClose = { selected = Destination.Home.name },
+            onNutrition = { insights("Nutrition") })
+        return
+    }
     BackHandler(selected != Destination.Home.name) { selected = Destination.Home.name }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 700.dp
@@ -69,7 +75,7 @@ fun FreshCheckApp() {
                             Destination.Home -> HomeScreen(name, samples, { samples = it }, scan,
                                 { selected = Destination.MyFood.name }, insights)
                             Destination.MyFood -> MyFoodScreen { scan("After Buying") }
-                            Destination.Scan -> ScanScreen(mode) { mode = it }
+                            Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
                             Destination.Insights -> InsightsScreen(topic) { topic = it }
                             Destination.Profile -> ProfileScreen(name) { name = it }
                         }
