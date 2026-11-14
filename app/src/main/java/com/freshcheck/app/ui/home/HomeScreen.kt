@@ -19,7 +19,8 @@ import java.time.LocalTime
 
 @Composable
 fun HomeScreen(name: String, samples: Boolean, onSamples: (Boolean) -> Unit,
-    onScan: (String) -> Unit, onFood: () -> Unit, onInsight: (String) -> Unit) {
+    onScan: (String) -> Unit, onFood: () -> Unit, onInsight: (String) -> Unit,
+    onHistory: () -> Unit = {}, onProfile: () -> Unit = {}) {
     val preview = androidx.compose.ui.platform.LocalInspectionMode.current
     var entered by remember { mutableStateOf(preview) }
     LaunchedEffect(Unit) { entered = true }
@@ -40,6 +41,9 @@ fun HomeScreen(name: String, samples: Boolean, onSamples: (Boolean) -> Unit,
                 ActionButton("Scan Food   →", { onScan("Before Buying") }, Modifier.fillMaxWidth())
             }
         }
+        TextButton({ onInsight("Overview") }) { Text("FreshCheck Insights →") }
+        TextButton(onHistory) { Text("Scan History →") }
+        TextButton(onProfile) { Text("Your Profile →") }
         SectionTitle("Choose your moment")
         ActionButton("Before Buying · Shop thoughtfully", { onScan("Before Buying") }, Modifier.fillMaxWidth())
         OutlinedButton({ onScan("After Buying") }, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {

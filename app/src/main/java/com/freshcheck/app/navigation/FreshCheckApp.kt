@@ -24,18 +24,40 @@ import com.freshcheck.app.ui.myfood.DemoInventory
 import com.freshcheck.app.ui.insights.InsightsScreen
 import com.freshcheck.app.ui.profile.ProfileScreen
 import com.freshcheck.app.ui.theme.FreshCheckTheme
+import com.freshcheck.app.ui.settings.ThemePreference
+import com.freshcheck.app.ui.history.HistoryFlow
+import com.freshcheck.app.ui.insights.inventoryHistory
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 private enum class Destination(val title: String) { Home("Home"), MyFood("My Food"), Scan("Scan"), Insights("Insights"), Profile("Profile") }
 
 /** UI-only destination state. Feature screens receive callbacks, with no persistence or inference dependencies. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FreshCheckApp() {
+fun FreshCheckApp(initialTheme: ThemePreference = ThemePreference.System) {
+    var preference by rememberSaveable { mutableStateOf(initialTheme.name) }
+    val choice = ThemePreference.valueOf(preference)
+    val dark = when (choice) {
+        ThemePreference.System -> isSystemInDarkTheme()
+        ThemePreference.Light -> false
+        ThemePreference.Dark -> true
+    }
+    FreshCheckTheme(darkTheme = dark) {
+        FreshCheckContent(choice) { preference = it.name }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference) -> Unit) {
     var selected by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var name by rememberSaveable { mutableStateOf("") }
     var samples by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf("Before Buying") }
     var topic by rememberSaveable { mutableStateOf("Overview") }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var openFoodId by rememberSaveable { mutableStateOf<String?>(null) }
     val inventory = rememberSaveable(saver = DemoInventory.StateSaver) { DemoInventory() }
     var scanReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var insightsReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
@@ -53,6 +75,16 @@ fun FreshCheckApp() {
         return
     }
     BackHandler(selected != Destination.Home.name) { selected = Destination.Home.name }
+    if (historyOpen) Dialog(onDismissRequest = { historyOpen = false },
+        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize()) {
+            Box(Modifier.safeDrawingPadding()) {
+                HistoryFlow(inventoryHistory(inventory.items), { historyOpen = false }, { id ->
+                    openFoodId = id; historyOpen = false; selected = Destination.MyFood.name
+                })
+            }
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 700.dp
         Scaffold(
@@ -81,15 +113,20 @@ fun FreshCheckApp() {
                     holder.SaveableStateProvider(destination) {
                         when (Destination.valueOf(destination)) {
                             Destination.Home -> HomeScreen(name, samples, { samples = it }, scan,
-                                { selected = Destination.MyFood.name }, insights)
+                                { selected = Destination.MyFood.name }, insights,
+                                onHistory = { historyOpen = true }, onProfile = { selected = Destination.Profile.name })
                             Destination.MyFood -> MyFoodFlow(inventory, onScan = { _ ->
                                 holder.removeState("scanner-flow")
                                 mode = "After Buying"; scanReturn = Destination.MyFood.name; selected = Destination.Scan.name
-                            }, onRescue = { insights("Rescue") })
+                            }, onRescue = { insights("Rescue") }, openItemId = openFoodId, onOpenHandled = { openFoodId = null })
                             Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
                             Destination.Insights -> InsightsScreen(topic, { topic = it }, inventory.items,
-                                onExit = { selected = insightsReturn }, onInventory = { selected = Destination.MyFood.name }, entryId = insightsEntry)
-                            Destination.Profile -> ProfileScreen(name) { name = it }
+                                onExit = { selected = insightsReturn }, onInventory = { selected = Destination.MyFood.name }, entryId = insightsEntry,
+                                onHistory = { historyOpen = true })
+                            Destination.Profile -> ProfileScreen(name, { name = it }, inventory.items.size,
+                                inventoryHistory(inventory.items).size, theme, onTheme,
+                                onHistory = { historyOpen = true }, onInsights = { insights("Overview") },
+                                onFood = { selected = Destination.MyFood.name }, containsSamples = inventory.items.any { it.isDemo })
                         }
                     }
                 }
@@ -141,7 +178,7 @@ private fun AppPreview() { FreshCheckTheme { FreshCheckApp() } }
 
 @Preview(name = "Dark dashboard", showBackground = true)
 @Composable
-private fun DarkPreview() { FreshCheckTheme(darkTheme = true) { FreshCheckApp() } }
+private fun DarkPreview() { FreshCheckApp(initialTheme = ThemePreference.Dark) }
 
 @Preview(name = "Sample dashboard", showBackground = true, heightDp = 1600)
 @Composable

@@ -16,7 +16,8 @@ import com.freshcheck.app.ui.meals.*
 /** Receives inventory projections; no database or recommendation service is created here. */
 @Composable
 fun InsightsScreen(topic: String, onTopic: (String) -> Unit, food: List<FoodItemUi> = emptyList(),
-    onExit: () -> Unit = {}, onInventory: () -> Unit = {}, entryId: Int = 0) {
+    onExit: () -> Unit = {}, onInventory: () -> Unit = {}, entryId: Int = 0,
+    onHistory: () -> Unit = {}) {
     var recipeId by rememberSaveable(entryId) { mutableStateOf<String?>(null) }
     var message by rememberSaveable(entryId) { mutableStateOf<String?>(null) }
     var trail by rememberSaveable(entryId) { mutableStateOf(arrayListOf<String>()) }
@@ -32,16 +33,7 @@ fun InsightsScreen(topic: String, onTopic: (String) -> Unit, food: List<FoodItem
             "Nutrition" -> NutritionScreen(onBack = ::back)
             "Meals" -> MealSuggestionsScreen(food, { recipeId = it }, ::back, { open("Rescue") })
             "Rescue" -> FoodRescueScreen(food, { recipeId = it }, ::back, onInventory)
-            else -> Page {
-                SectionTitle("Small choices, better habits", "Your space for food inspiration.")
-                Panel {
-                    SectionTitle("Explore a colourful plate", "Nutrition, kitchen inspiration and simple food rescue.")
-                    ActionButton("Nutrition Dashboard", { open("Nutrition") }, Modifier.fillMaxWidth())
-                    ActionButton("Smart Meals", { open("Meals") }, Modifier.fillMaxWidth())
-                    ActionButton("Rescue My Food", { open("Rescue") }, Modifier.fillMaxWidth())
-                }
-                Panel { SectionTitle("Your impact starts small", "Usage and waste metrics remain pending real food tracking.") }
-            }
+            else -> InsightsDashboard(food, inventoryHistory(food), ::open, onInventory, onHistory)
         }
     }
     recipe?.let { selected ->

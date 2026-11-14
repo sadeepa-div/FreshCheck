@@ -2,6 +2,10 @@ package com.freshcheck.app.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
@@ -26,6 +30,15 @@ private val DarkColors = darkColorScheme(
 )
 @Composable
 fun FreshCheckTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val view = LocalView.current
+    if (!view.isInEditMode) SideEffect {
+        (view.context as? Activity)?.let { activity ->
+            WindowCompat.getInsetsController(activity.window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
     MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = Typography, content = content)
 }

@@ -11,12 +11,16 @@ import com.freshcheck.app.ui.theme.FreshCheckTheme
 import java.time.LocalDate
 
 @Composable
-fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: () -> Unit = {}) {
+fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: () -> Unit = {},
+    openItemId: String? = null, onOpenHandled: () -> Unit = {}) {
     var route by rememberSaveable { mutableStateOf("list") }
     var itemId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingAction by rememberSaveable { mutableStateOf("") }
     var feedback by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openItemId) {
+        if (openItemId != null) { itemId = openItemId; route = "details"; onOpenHandled() }
+    }
     val item = inventory.items.firstOrNull { it.id == itemId }
     fun back() { route = if (route == "edit" || route == "journey") "details" else "list" }
     BackHandler(route != "list" || pendingId != null) { if (pendingId != null) pendingId = null else back() }
