@@ -19,7 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import com.freshcheck.app.ui.home.HomeScreen
 import com.freshcheck.app.ui.scan.ScannerFlow
-import com.freshcheck.app.ui.myfood.MyFoodScreen
+import com.freshcheck.app.ui.myfood.MyFoodFlow
+import com.freshcheck.app.ui.myfood.DemoInventory
 import com.freshcheck.app.ui.insights.InsightsScreen
 import com.freshcheck.app.ui.profile.ProfileScreen
 import com.freshcheck.app.ui.theme.FreshCheckTheme
@@ -35,12 +36,15 @@ fun FreshCheckApp() {
     var samples by rememberSaveable { mutableStateOf(false) }
     var mode by rememberSaveable { mutableStateOf("Before Buying") }
     var topic by rememberSaveable { mutableStateOf("Overview") }
+    val inventory = rememberSaveable(saver = DemoInventory.StateSaver) { DemoInventory() }
+    var scanReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
     val holder = rememberSaveableStateHolder()
-    val scan: (String) -> Unit = { mode = it; selected = Destination.Scan.name }
+    val scan: (String) -> Unit = { mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
     val insights: (String) -> Unit = { topic = it; selected = Destination.Insights.name }
     if (selected == Destination.Scan.name) {
         ScannerFlow(mode, { mode = it },
-            onClose = { selected = Destination.Home.name },
+            onClose = { selected = scanReturn },
+            onHome = { selected = Destination.Home.name },
             onNutrition = { insights("Nutrition") })
         return
     }
@@ -74,7 +78,9 @@ fun FreshCheckApp() {
                         when (Destination.valueOf(destination)) {
                             Destination.Home -> HomeScreen(name, samples, { samples = it }, scan,
                                 { selected = Destination.MyFood.name }, insights)
-                            Destination.MyFood -> MyFoodScreen { scan("After Buying") }
+                            Destination.MyFood -> MyFoodFlow(inventory) { _ ->
+                                mode = "After Buying"; scanReturn = Destination.MyFood.name; selected = Destination.Scan.name
+                            }
                             Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
                             Destination.Insights -> InsightsScreen(topic) { topic = it }
                             Destination.Profile -> ProfileScreen(name) { name = it }

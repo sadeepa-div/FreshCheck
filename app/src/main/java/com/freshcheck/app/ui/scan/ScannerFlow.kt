@@ -17,7 +17,8 @@ import kotlinx.coroutines.delay
  * Keep ScanScreen and AnalysisResultScreen stateless for real state and asynchronous callbacks.
  */
 @Composable
-fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit, onNutrition: () -> Unit) {
+fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit, onNutrition: () -> Unit,
+    onHome: () -> Unit = onClose) {
     val mode = ScanMode.entries.firstOrNull { it.label == modeLabel } ?: ScanMode.BeforeBuying
     var stage by rememberSaveable { mutableStateOf("scanner") }
     var conditionName by rememberSaveable { mutableStateOf(FreshnessCondition.Fresh.name) }
@@ -35,7 +36,7 @@ fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit
     AnimatedContent(stage == "result", label = "Demo analysis result") { showResult ->
         if (showResult) Box(Modifier.fillMaxSize().safeDrawingPadding()) {
             AnalysisResultScreen(DemoResults.create(condition), mode, ResultActions(
-                onScanAgain = { stage = "scanner" }, onHome = onClose,
+                onScanAgain = { stage = "scanner" }, onHome = onHome,
                 onSave = { message = "Inventory integration pending. This sample has not been saved." },
                 onNutrition = onNutrition,
                 onReminder = { message = "Reminder integration pending. No reminder has been scheduled." }
