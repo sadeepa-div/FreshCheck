@@ -1,58 +1,44 @@
 package com.freshcheck.app.ui.theme
-
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightColors = lightColorScheme(
+    primary = Forest, onPrimary = Color.White, secondary = Fresh,
+    secondaryContainer = Color(0xFFD9EEDC), onSecondaryContainer = Color(0xFF103C28),
+    surfaceVariant = Color(0xFFE1E8DA), outlineVariant = Color(0xFFC4D0BF),
+    background = Ivory, surface = Ivory, surfaceContainer = Color(0xFFEBF0E4),
+    primaryContainer = Color(0xFFD9EEDC), onPrimaryContainer = Color(0xFF103C28),
+    onBackground = Color(0xFF192D22), onSurface = Color(0xFF192D22),
+    onSurfaceVariant = Color(0xFF526357), outline = Color(0xFF748577),
+    tertiary = Color(0xFF79520C), error = Color(0xFFAC3833)
 )
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFF89D8A7), onPrimary = Color(0xFF00391F),
+    secondaryContainer = Color(0xFF224D35), onSecondaryContainer = Color(0xFFD9EEDC),
+    surfaceVariant = Color(0xFF334539), outlineVariant = Color(0xFF435549),
+    secondary = Fresh, background = Color(0xFF101B15), surface = Color(0xFF101B15),
+    surfaceContainer = Color(0xFF1D2E23), primaryContainer = Color(0xFF224D35),
+    onPrimaryContainer = Color(0xFFD9EEDC), onBackground = Color(0xFFE1EBDF),
+    onSurface = Color(0xFFE1EBDF), onSurfaceVariant = Color(0xFFBCCABD),
+    tertiary = Amber, error = Coral
 )
-
 @Composable
-fun FreshCheckTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+fun FreshCheckTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val view = LocalView.current
+    if (!view.isInEditMode) SideEffect {
+        (view.context as? Activity)?.let { activity ->
+            WindowCompat.getInsetsController(activity.window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = Typography, content = content)
 }
