@@ -38,14 +38,18 @@ fun FreshCheckApp() {
     var topic by rememberSaveable { mutableStateOf("Overview") }
     val inventory = rememberSaveable(saver = DemoInventory.StateSaver) { DemoInventory() }
     var scanReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
+    var insightsReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
+    var insightsEntry by rememberSaveable { mutableStateOf(0) }
     val holder = rememberSaveableStateHolder()
-    val scan: (String) -> Unit = { mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
-    val insights: (String) -> Unit = { topic = it; selected = Destination.Insights.name }
+    val scan: (String) -> Unit = { holder.removeState("scanner-flow"); mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
+    val insights: (String) -> Unit = { insightsEntry++; topic = it; insightsReturn = selected; selected = Destination.Insights.name }
     if (selected == Destination.Scan.name) {
+        holder.SaveableStateProvider("scanner-flow") {
         ScannerFlow(mode, { mode = it },
             onClose = { selected = scanReturn },
             onHome = { selected = Destination.Home.name },
             onNutrition = { insights("Nutrition") })
+        }
         return
     }
     BackHandler(selected != Destination.Home.name) { selected = Destination.Home.name }
@@ -78,11 +82,13 @@ fun FreshCheckApp() {
                         when (Destination.valueOf(destination)) {
                             Destination.Home -> HomeScreen(name, samples, { samples = it }, scan,
                                 { selected = Destination.MyFood.name }, insights)
-                            Destination.MyFood -> MyFoodFlow(inventory) { _ ->
+                            Destination.MyFood -> MyFoodFlow(inventory, onScan = { _ ->
+                                holder.removeState("scanner-flow")
                                 mode = "After Buying"; scanReturn = Destination.MyFood.name; selected = Destination.Scan.name
-                            }
+                            }, onRescue = { insights("Rescue") })
                             Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
-                            Destination.Insights -> InsightsScreen(topic) { topic = it }
+                            Destination.Insights -> InsightsScreen(topic, { topic = it }, inventory.items,
+                                onExit = { selected = insightsReturn }, onInventory = { selected = Destination.MyFood.name }, entryId = insightsEntry)
                             Destination.Profile -> ProfileScreen(name) { name = it }
                         }
                     }

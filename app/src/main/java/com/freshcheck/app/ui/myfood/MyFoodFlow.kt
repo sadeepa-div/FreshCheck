@@ -11,7 +11,7 @@ import com.freshcheck.app.ui.theme.FreshCheckTheme
 import java.time.LocalDate
 
 @Composable
-fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit) {
+fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: () -> Unit = {}) {
     var route by rememberSaveable { mutableStateOf("list") }
     var itemId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -33,7 +33,7 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit) {
             }, ::back) }
             "journey" -> item?.let { FreshnessJourneyScreen(it, ::back, { onScan(it.id) }) }
             else -> MyFoodScreen(inventory.items, actions, { onScan(null) },
-                { inventory.load(LocalDate.now()) }, { inventory.clear(); itemId = null; route = "list" })
+                { inventory.load(LocalDate.now()) }, { inventory.clear(); itemId = null; route = "list" }, onRescue)
         }
     }
     pendingId?.let { id ->

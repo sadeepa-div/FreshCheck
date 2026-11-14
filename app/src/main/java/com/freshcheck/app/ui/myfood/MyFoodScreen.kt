@@ -14,7 +14,7 @@ import java.time.LocalDate
 
 @Composable
 fun MyFoodScreen(items: List<FoodItemUi>, actions: FoodActions, onScan: () -> Unit,
-    onLoadDemo: () -> Unit, onClearDemo: () -> Unit) {
+    onLoadDemo: () -> Unit, onClearDemo: () -> Unit, onRescue: () -> Unit = {}) {
     var query by rememberSaveable { mutableStateOf("") }
     var filterName by rememberSaveable { mutableStateOf(FoodFilter.All.name) }
     var sortName by rememberSaveable { mutableStateOf(FoodSort.Priority.name) }
@@ -29,6 +29,7 @@ fun MyFoodScreen(items: List<FoodItemUi>, actions: FoodActions, onScan: () -> Un
         }
         Text(items.maxByOrNull { it.added }?.let { "Recently added · ${it.name} · ${it.added}" } ?: "Nothing added yet")
         ActionButton("Scan Food", onScan, Modifier.fillMaxWidth())
+        OutlinedButton(onRescue, Modifier.fillMaxWidth()) { Text("Rescue My Food") }
         if (items.any { it.isDemo }) {
             Text("DEMONSTRATION DATA · Edits affect session samples only. No notifications are scheduled.",
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
