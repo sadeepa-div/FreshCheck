@@ -22,3 +22,13 @@ data class ScannerActions(
     val onSelectImage: () -> Unit,
     val onClose: () -> Unit
 )
+
+/** Request identity belongs to the coordinator. Member 2 must echo it in completed work. */
+data class ScanRequest(val requestId: String, val mode: ScanMode, val rescanFoodId: String? = null)
+data class ScanSubmission(val request: ScanRequest, val result: AnalysisResult) {
+    val rescanFoodId get() = request.rescanFoodId
+}
+
+/** Reject late completions, changed modes and changed food associations. */
+fun analysisFor(request: ScanRequest, completed: ScanSubmission?): AnalysisResult? =
+    completed?.takeIf { it.request == request }?.result

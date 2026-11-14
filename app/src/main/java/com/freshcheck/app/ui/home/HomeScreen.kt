@@ -20,7 +20,8 @@ import java.time.LocalTime
 @Composable
 fun HomeScreen(name: String, samples: Boolean, onSamples: (Boolean) -> Unit,
     onScan: (String) -> Unit, onFood: () -> Unit, onInsight: (String) -> Unit,
-    onHistory: () -> Unit = {}, onProfile: () -> Unit = {}) {
+    onHistory: () -> Unit = {}, onProfile: () -> Unit = {},
+    summary: HomeUiState = HomeUiState()) {
     val preview = androidx.compose.ui.platform.LocalInspectionMode.current
     var entered by remember { mutableStateOf(preview) }
     LaunchedEffect(Unit) { entered = true }
@@ -53,33 +54,32 @@ fun HomeScreen(name: String, samples: Boolean, onSamples: (Boolean) -> Unit,
             Text("Explore sample dashboard", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Switch(samples, onSamples, Modifier.semantics { contentDescription = "Explore sample dashboard" })
         }
-        if (samples) Text("SAMPLE DATA · Illustrative items only. Nothing is saved or assessed.",
+        if (summary.isDemo) Text("SAMPLE DATA · Illustrative items only. Nothing is saved or assessed.",
             color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
         SectionTitle("Your kitchen at a glance")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Panel(Modifier.weight(1f)) {
-                Text(if (samples) "08" else "00", style = MaterialTheme.typography.headlineLarge)
+                Text(summary.totalFood.toString(), style = MaterialTheme.typography.headlineLarge)
                 Text("Food items", style = MaterialTheme.typography.bodyMedium)
             }
             Panel(Modifier.weight(1f)) {
-                Text(if (samples) "02" else "00", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.tertiary)
+                Text(summary.useSoonCount.toString(), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.tertiary)
                 Text("Use soon", style = MaterialTheme.typography.bodyMedium)
             }
         }
         TextButton(onFood) { Text("Open My Food →") }
-        SectionTitle("Use soon", "Give these a little attention first.")
-        if (samples) Panel {
-            Text("Sample · Avocado & spinach", style = MaterialTheme.typography.titleMedium)
-            Text("Example priority list for planning your next meal. No expiry prediction.")
+        SectionTitle("Use soon", "Recorded visible condition only.")
+        if (summary.useSoonNames.isNotEmpty()) Panel {
+            Text(summary.useSoonNames.joinToString(), style = MaterialTheme.typography.titleMedium)
             TextButton({ onInsight("Meals") }) { Text("Explore meal ideas →") }
-        } else EmptyPanel("A fresh start", "Your priority list will appear here when food tracking is available.", "Explore My Food", onFood)
+        } else EmptyPanel("A fresh start", "No Use Soon items in the supplied inventory.", "Explore My Food", onFood)
         SectionTitle("Recent scan")
-        if (samples) Panel {
-            Text("Sample · Tomatoes", style = MaterialTheme.typography.titleMedium)
-            Text("After Buying · Example scan preview")
-            Text("No AI result has been generated.", style = MaterialTheme.typography.bodyMedium)
-            TextButton({ onScan("After Buying") }) { Text("Explore scanning →") }
-        } else EmptyPanel("No scans yet", "Start with a look at the two scanning modes.", "Explore Scan", { onScan("Before Buying") })
+        val recent = summary.recentScan
+        if (recent != null) Panel {
+            Text("${if (recent.isDemo) "Sample · " else ""}${recent.name}", style = MaterialTheme.typography.titleMedium)
+            Text("${recent.condition.label} · ${recent.at.toString().replace('T', ' ')}")
+            TextButton(onHistory) { Text("Open scan history →") }
+        } else EmptyPanel("No scans yet", "No scan history records have been supplied.", "Explore Scan", { onScan("Before Buying") })
         SectionTitle("Feel good, eat well")
         Panel {
             Text("More colour on your plate", style = MaterialTheme.typography.titleMedium)

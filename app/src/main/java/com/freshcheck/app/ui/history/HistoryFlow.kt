@@ -52,7 +52,7 @@ fun HistoryFlow(records: List<ScanHistoryRecord>, onClose: () -> Unit, onFood: (
                 })
                 matches.forEach { scan ->
                     Panel {
-                        ProduceArt(Modifier.size(72.dp))
+                        ProduceImage(scan.imageUri, "Scan of ${scan.name}", Modifier.size(72.dp))
                         Text("Scan image placeholder", style = MaterialTheme.typography.labelSmall)
                         Text(scan.name, style = MaterialTheme.typography.titleLarge)
                         Text("${scan.at.toString().replace('T', ' ')} · ${scan.mode?.label ?: "Mode not recorded"}")
@@ -65,8 +65,8 @@ fun HistoryFlow(records: List<ScanHistoryRecord>, onClose: () -> Unit, onFood: (
             } else {
                 SectionTitle(selected.name, selected.category.label)
                 if (selected.isDemo) Text("DEMONSTRATION · NO REAL MODEL OUTPUT", color = MaterialTheme.colorScheme.primary)
-                ProduceArt(Modifier.fillMaxWidth().height(180.dp))
-                Text("Illustration placeholder · image rendering integration pending", style = MaterialTheme.typography.bodySmall)
+                ProduceImage(selected.imageUri, "Scan of ${selected.name}", Modifier.fillMaxWidth().height(180.dp))
+                Text("Local scan image when available; illustration otherwise", style = MaterialTheme.typography.bodySmall)
                 Text("Analysed · ${selected.at.toString().replace('T', ' ')}")
                 Text("Mode · ${selected.mode?.label ?: "Not recorded"}")
                 FreshnessStatusCard(selected.condition)

@@ -8,7 +8,7 @@ enum class FreshnessCondition(val label: String, val symbol: String) {
 enum class ProduceCategory(val label: String) { Fruit("Fruit"), Vegetable("Vegetable"), Unknown("Unknown") }
 data class StorageGuidance(
     val location: String, val recheck: String, val handling: String, val reminder: String? = null
-)
+) : java.io.Serializable
 /**
  * Member 2 maps inference output to this immutable UI contract.
  * Null confidence means unavailable; values must be finite and between 0 and 1.
@@ -23,7 +23,8 @@ data class AnalysisResult(
     val imageUri: String? = null,
     val analyzedAtLabel: String? = null,
     val guidance: StorageGuidance? = null,
-    val isDemo: Boolean = false
+    val isDemo: Boolean = false,
+    val produceId: String? = null
 ) {
     init { require(confidence == null || (confidence.isFinite() && confidence in 0f..1f)) }
 }
@@ -37,6 +38,7 @@ object DemoResults {
         condition = condition,
         confidence = if (condition == FreshnessCondition.Uncertain) null else 0.92f,
         isDemo = true,
+        produceId = if (condition == FreshnessCondition.Uncertain) null else "demo-avocado",
         guidance = if (condition == FreshnessCondition.Uncertain || condition == FreshnessCondition.VisiblySpoiled) null
         else StorageGuidance("Sample · Ripen whole avocados at room temperature",
             "Sample · Re-check its condition before preparing; no expiry estimate.",

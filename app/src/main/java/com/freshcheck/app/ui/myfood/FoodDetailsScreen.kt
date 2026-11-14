@@ -12,10 +12,11 @@ fun FoodDetailsScreen(item: FoodItemUi, actions: FoodActions, onBack: () -> Unit
     Page {
         TextButton(onBack) { Text("← My Food") }
         if (item.isDemo) Text("DEMONSTRATION RECORD · SESSION ONLY", color = MaterialTheme.colorScheme.primary)
-        ProduceArt(Modifier.fillMaxWidth().height(200.dp))
+        ProduceImage(item.latest?.imageUri, "Latest scan of ${item.name}", Modifier.fillMaxWidth().height(200.dp))
         SectionTitle(item.name, item.category.label)
         FreshnessStatusCard(item.condition)
         ConfidenceIndicator(item.latest?.confidence, item.isDemo)
+        Text("Latest scan · ${item.latest?.at?.toString()?.replace('T', ' ') ?: "Not scanned"}")
         Panel {
             Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.titleLarge)
             Text("Stored · ${item.storage.label}")
@@ -38,8 +39,8 @@ fun FoodDetailsScreen(item: FoodItemUi, actions: FoodActions, onBack: () -> Unit
         ActionButton("Rescan Food", { actions.onRescan(item.id) }, Modifier.fillMaxWidth())
         OutlinedButton({ actions.onEdit(item.id) }, Modifier.fillMaxWidth()) { Text("Edit Item") }
         OutlinedButton({ actions.onEdit(item.id) }, Modifier.fillMaxWidth()) { Text("Set or Edit Reminder") }
-        TextButton({ actions.onRemove(item.id, "Mark as Used") }) { Text("Mark as Used") }
-        TextButton({ actions.onRemove(item.id, "Mark as Discarded") }) { Text("Mark as Discarded") }
-        TextButton({ actions.onRemove(item.id, "Delete") }) { Text("Delete Item", color = MaterialTheme.colorScheme.error) }
+        TextButton({ actions.onMarkUsed(item.id) }) { Text("Mark as Used") }
+        TextButton({ actions.onMarkDiscarded(item.id) }) { Text("Mark as Discarded") }
+        TextButton({ actions.onDelete(item.id) }) { Text("Delete Item", color = MaterialTheme.colorScheme.error) }
     }
 }

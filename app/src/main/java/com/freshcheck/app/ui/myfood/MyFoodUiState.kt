@@ -17,7 +17,7 @@ data class FoodItemUi(
     val id: String, val name: String, val category: ProduceCategory,
     val quantity: Double, val unit: String, val storage: FoodStorage,
     val added: LocalDate, val recheck: LocalDate?, val scans: List<FoodScanUi>,
-    val notes: String = "", val isDemo: Boolean = false
+    val notes: String = "", val isDemo: Boolean = false, val produceId: String? = null
 ) : Serializable {
     val latest get() = scans.maxByOrNull { it.at }
     val condition get() = latest?.condition ?: FreshnessCondition.Uncertain
@@ -86,19 +86,36 @@ fun validateFoodEdit(values: FoodEditValues, today: LocalDate): Map<String, Stri
 data class FoodActions(
     val onOpen: (String) -> Unit, val onEdit: (String) -> Unit,
     val onJourney: (String) -> Unit, val onRescan: (String) -> Unit,
-    val onRemove: (String, String) -> Unit
+    val onMarkUsed: (String) -> Unit,
+    val onMarkDiscarded: (String) -> Unit,
+    val onDelete: (String) -> Unit
 )
 /** Isolated, opt-in UI samples. Saveable only for session restoration, no database or notification effects. */
-class DemoInventory(initial: List<FoodItemUi> = emptyList()) {
+class DemoInventory(initial: List<FoodItemUi> = emptyList(),
+    initialHistory: List<com.freshcheck.app.ui.insights.ScanHistoryRecord> = com.freshcheck.app.ui.insights.inventoryHistory(initial),
+    initialOutcomes: List<com.freshcheck.app.ui.insights.OutcomeRecord> = emptyList()) {
+    var history by mutableStateOf(initialHistory)
+        private set
+    var outcomes by mutableStateOf(initialOutcomes)
+        private set
+    fun markUsed(id: String) = recordOutcome(id, com.freshcheck.app.ui.insights.FoodOutcome.Used)
+    fun markDiscarded(id: String) = recordOutcome(id, com.freshcheck.app.ui.insights.FoodOutcome.Discarded)
+    private fun recordOutcome(id: String, outcome: com.freshcheck.app.ui.insights.FoodOutcome) {
+        val item = items.firstOrNull { it.id == id && it.isDemo } ?: return
+        outcomes = outcomes + com.freshcheck.app.ui.insights.OutcomeRecord("demo-outcome-$id", id, item.name,
+            item.category, outcome, LocalDateTime.now(), true)
+        remove(id)
+    }
     var items by mutableStateOf(initial)
         private set
-    fun load(today: LocalDate) { items = sampleFood(today) }
-    fun clear() { items = emptyList() }
+    fun load(today: LocalDate) { items = sampleFood(today); history = com.freshcheck.app.ui.insights.inventoryHistory(items); outcomes = emptyList() }
+    fun clear() { items = emptyList(); history = emptyList(); outcomes = emptyList() }
     fun update(item: FoodItemUi) { require(item.isDemo); items = items.map { if (it.id == item.id && it.isDemo) item else it } }
     fun remove(id: String) { items = items.filterNot { it.id == id && it.isDemo } }
     companion object {
-        val StateSaver = Saver<DemoInventory, ArrayList<FoodItemUi>>(
-            save = { ArrayList(it.items) }, restore = { DemoInventory(it) })
+        val StateSaver = Saver<DemoInventory, DemoInventorySnapshot>(
+            save = { DemoInventorySnapshot(it.items, it.history, it.outcomes) },
+            restore = { DemoInventory(it.items, it.history, it.outcomes) })
     }
 }
 fun sampleFood(today: LocalDate): List<FoodItemUi> {
@@ -116,3 +133,9 @@ fun sampleFood(today: LocalDate): List<FoodItemUi> {
         item("tomato", "Tomato", ProduceCategory.Fruit, FreshnessCondition.VisiblySpoiled, null, 2),
         item("carrot", "Carrot", ProduceCategory.Vegetable, FreshnessCondition.Uncertain, null, 0))
 }
+
+data class DemoInventorySnapshot(
+    val items: List<FoodItemUi>,
+    val history: List<com.freshcheck.app.ui.insights.ScanHistoryRecord>,
+    val outcomes: List<com.freshcheck.app.ui.insights.OutcomeRecord>
+) : Serializable

@@ -18,7 +18,7 @@ fun FreshnessJourneyScreen(item: FoodItemUi, onBack: () -> Unit, onRescan: () ->
     Page {
         TextButton(onBack) { Text("← Food Details") }
         SectionTitle("${item.name}'s journey", if (item.isDemo) "DEMONSTRATION HISTORY · SAMPLE SCANS" else "Recorded external condition")
-        ProduceArt(Modifier.fillMaxWidth().height(140.dp))
+        ProduceImage(item.latest?.imageUri, "Latest scan of ${item.name}", Modifier.fillMaxWidth().height(140.dp))
         if (scans.size < 2) EmptyPanel("A journey takes more than one moment",
             if (scans.isEmpty()) "No scans recorded yet." else "One scan recorded. Add another to compare recorded conditions.", "Rescan Food", onRescan)
         else Panel {
@@ -29,10 +29,10 @@ fun FreshnessJourneyScreen(item: FoodItemUi, onBack: () -> Unit, onRescan: () ->
             val gap = Duration.between(previous.at, latest.at)
             Text("Time between scans · ${gap.toDays()} days, ${gap.toHours() % 24} hours")
             Row {
-                Column(Modifier.weight(1f)) { ProduceArt(Modifier.fillMaxWidth().height(90.dp)); Text("Previous · illustration") }
-                Column(Modifier.weight(1f)) { ProduceArt(Modifier.fillMaxWidth().height(90.dp)); Text("Latest · illustration") }
+                Column(Modifier.weight(1f)) { ProduceImage(previous.imageUri, "Previous scan", Modifier.fillMaxWidth().height(90.dp)); Text("Previous scan · image or placeholder") }
+                Column(Modifier.weight(1f)) { ProduceImage(latest.imageUri, "Latest scan", Modifier.fillMaxWidth().height(90.dp)); Text("Latest scan · image or placeholder") }
             }
-            Text("Illustrations are placeholders, not scan-image evidence. Confidence changes do not measure freshness deterioration. Two images cannot establish spoilage progression.")
+            Text("Unavailable images use illustrations, not scan-image evidence. Confidence changes do not measure freshness deterioration. Two images cannot establish spoilage progression.")
         }
         scans.reversed().forEach { scan -> key(scan.id) { FreshnessTimelineItem(scan, item.isDemo) } }
         Text(VisualAssessmentNotice, style = MaterialTheme.typography.bodySmall)
@@ -53,7 +53,7 @@ fun FreshnessTimelineItem(scan: FoodScanUi, isDemo: Boolean) {
             Text("${scan.condition.symbol}  ${scan.condition.label}", style = MaterialTheme.typography.titleMedium)
             Text(scan.confidence?.let { "${if (isDemo) "Sample " else ""}Model confidence · ${(it * 100).toInt()}%" } ?: "Model confidence unavailable")
             TextButton({ expanded = !expanded }) { Text(if (expanded) "Hide image placeholder" else "Expand image placeholder") }
-            if (expanded) { ProduceArt(Modifier.fillMaxWidth().height(150.dp)); Text("Illustration · image integration pending") }
+            if (expanded) { ProduceImage(scan.imageUri, "Scan image", Modifier.fillMaxWidth().height(150.dp)); Text("Scan image or illustration placeholder") }
         }
     }
 }

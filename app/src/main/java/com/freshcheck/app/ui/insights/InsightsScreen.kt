@@ -17,7 +17,10 @@ import com.freshcheck.app.ui.meals.*
 @Composable
 fun InsightsScreen(topic: String, onTopic: (String) -> Unit, food: List<FoodItemUi> = emptyList(),
     onExit: () -> Unit = {}, onInventory: () -> Unit = {}, entryId: Int = 0,
-    onHistory: () -> Unit = {}) {
+    onHistory: () -> Unit = {},
+    history: List<ScanHistoryRecord> = emptyList(),
+    usedEvents: List<OutcomeRecord> = emptyList(), discardedEvents: List<OutcomeRecord> = emptyList(),
+    produceId: String? = null, nutritionProfile: com.freshcheck.app.ui.nutrition.NutritionProfile? = null) {
     var recipeId by rememberSaveable(entryId) { mutableStateOf<String?>(null) }
     var message by rememberSaveable(entryId) { mutableStateOf<String?>(null) }
     var trail by rememberSaveable(entryId) { mutableStateOf(arrayListOf<String>()) }
@@ -30,10 +33,11 @@ fun InsightsScreen(topic: String, onTopic: (String) -> Unit, food: List<FoodItem
     BackHandler(topic != "Overview" && recipe == null) { back() }
     AnimatedContent(topic, label = "Food inspiration pages") { current ->
         when (current) {
-            "Nutrition" -> NutritionScreen(onBack = ::back)
+            "Nutrition" -> NutritionScreen(profile = nutritionProfile ?: com.freshcheck.app.ui.nutrition.DemoNutrition, onBack = ::back, produceId = produceId)
             "Meals" -> MealSuggestionsScreen(food, { recipeId = it }, ::back, { open("Rescue") })
             "Rescue" -> FoodRescueScreen(food, { recipeId = it }, ::back, onInventory)
-            else -> InsightsDashboard(food, inventoryHistory(food), ::open, onInventory, onHistory)
+            else -> InsightsDashboard(food, history, ::open, onInventory, onHistory,
+                suppliedOutcomes = usedEvents.filter { it.outcome == FoodOutcome.Used } + discardedEvents.filter { it.outcome == FoodOutcome.Discarded })
         }
     }
     recipe?.let { selected ->

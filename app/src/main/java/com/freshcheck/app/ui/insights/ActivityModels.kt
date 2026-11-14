@@ -9,11 +9,11 @@ import java.time.LocalDateTime
 /** UI projections. Member 3 supplies records; these are not Room entities. */
 enum class FoodOutcome { Used, Discarded }
 data class OutcomeRecord(val id: String, val foodId: String, val name: String, val category: ProduceCategory,
-    val outcome: FoodOutcome, val at: LocalDateTime, val isDemo: Boolean = false)
+    val outcome: FoodOutcome, val at: LocalDateTime, val isDemo: Boolean = false) : java.io.Serializable
 data class ScanHistoryRecord(val id: String, val name: String, val category: ProduceCategory,
     val at: LocalDateTime, val condition: FreshnessCondition, val confidence: Float?,
     val mode: ScanMode?, val foodId: String? = null, val imageUri: String? = null,
-    val guidance: StorageGuidance? = null, val isDemo: Boolean = false)
+    val guidance: StorageGuidance? = null, val isDemo: Boolean = false) : java.io.Serializable
 enum class InsightPeriod(val label: String) { Week("7 days"), Month("30 days"), All("All time") }
 data class ActivitySummary(val tracked: Int, val scans: Int, val used: Int, val discarded: Int,
     val activeNow: Int, val attentionNow: Int) {

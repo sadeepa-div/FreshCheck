@@ -26,7 +26,10 @@ import com.freshcheck.app.ui.profile.ProfileScreen
 import com.freshcheck.app.ui.theme.FreshCheckTheme
 import com.freshcheck.app.ui.settings.ThemePreference
 import com.freshcheck.app.ui.history.HistoryFlow
-import com.freshcheck.app.ui.insights.inventoryHistory
+import com.freshcheck.app.ui.insights.*
+import com.freshcheck.app.ui.home.homeSummary
+import com.freshcheck.app.ui.myfood.sampleFood
+import com.freshcheck.app.ui.scan.ScanRequest
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -36,7 +39,8 @@ private enum class Destination(val title: String) { Home("Home"), MyFood("My Foo
 /** UI-only destination state. Feature screens receive callbacks, with no persistence or inference dependencies. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FreshCheckApp(initialTheme: ThemePreference = ThemePreference.System) {
+fun FreshCheckApp(initialTheme: ThemePreference = ThemePreference.System,
+    data: AppUiData = AppUiData(), actions: AppIntegrationActions = AppIntegrationActions()) {
     var preference by rememberSaveable { mutableStateOf(initialTheme.name) }
     val choice = ThemePreference.valueOf(preference)
     val dark = when (choice) {
@@ -45,12 +49,13 @@ fun FreshCheckApp(initialTheme: ThemePreference = ThemePreference.System) {
         ThemePreference.Dark -> true
     }
     FreshCheckTheme(darkTheme = dark) {
-        FreshCheckContent(choice) { preference = it.name }
+        FreshCheckContent(choice, { preference = it.name }, data, actions)
     }
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference) -> Unit) {
+private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference) -> Unit,
+    data: AppUiData, actions: AppIntegrationActions) {
     var selected by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var name by rememberSaveable { mutableStateOf("") }
     var samples by rememberSaveable { mutableStateOf(false) }
@@ -59,18 +64,31 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var openFoodId by rememberSaveable { mutableStateOf<String?>(null) }
     val inventory = rememberSaveable(saver = DemoInventory.StateSaver) { DemoInventory() }
+    val activeFood = if (data.inventoryConnected) data.activeFood else inventory.items
+    val history = data.scanHistory + if (data.inventoryConnected) emptyList() else inventory.history
+    val outcomes = if (data.inventoryConnected) emptyList() else inventory.outcomes
+    var rescanFoodId by rememberSaveable { mutableStateOf<String?>(null) }
+    var requestId by rememberSaveable { mutableStateOf(java.util.UUID.randomUUID().toString()) }
+    var nutritionProduceId by rememberSaveable { mutableStateOf<String?>(null) }
     var scanReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var insightsReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var insightsEntry by rememberSaveable { mutableStateOf(0) }
     val holder = rememberSaveableStateHolder()
-    val scan: (String) -> Unit = { holder.removeState("scanner-flow"); mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
-    val insights: (String) -> Unit = { insightsEntry++; topic = it; insightsReturn = selected; selected = Destination.Insights.name }
+    val scan: (String) -> Unit = { holder.removeState("scanner-flow"); rescanFoodId = null; requestId = java.util.UUID.randomUUID().toString(); mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
+    val insights: (String) -> Unit = { nutritionProduceId = null; insightsEntry++; topic = it; insightsReturn = selected; selected = Destination.Insights.name }
     if (selected == Destination.Scan.name) {
+        val request = ScanRequest(requestId, com.freshcheck.app.ui.scan.ScanMode.entries.first { it.label == mode }, rescanFoodId)
+        LaunchedEffect(request) { actions.onScanRequest(request) }
         holder.SaveableStateProvider("scanner-flow") {
-        ScannerFlow(mode, { mode = it },
+        ScannerFlow(mode, { mode = it; requestId = java.util.UUID.randomUUID().toString() },
             onClose = { selected = scanReturn },
             onHome = { selected = Destination.Home.name },
-            onNutrition = { insights("Nutrition") })
+            onNutrition = { insights("Nutrition") },
+            request = request,
+            providedResult = com.freshcheck.app.ui.scan.analysisFor(request, data.completedAnalysis),
+            onNewRequest = { requestId = java.util.UUID.randomUUID().toString() },
+            onNutritionForProduce = { id -> insights("Nutrition"); nutritionProduceId = id },
+            onSubmit = actions.saveScan)
         }
         return
     }
@@ -79,18 +97,20 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.safeDrawingPadding()) {
-                HistoryFlow(inventoryHistory(inventory.items), { historyOpen = false }, { id ->
+                HistoryFlow(history, { historyOpen = false }, { id ->
                     openFoodId = id; historyOpen = false; selected = Destination.MyFood.name
-                })
+                }, actions = actions.history)
             }
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 700.dp
         Scaffold(
-            topBar = { CenterAlignedTopAppBar(title = {
-                Text("FreshCheck", style = MaterialTheme.typography.titleLarge)
-            }) },
+            topBar = { Column {
+                CenterAlignedTopAppBar(title = { Text("FreshCheck", style = MaterialTheme.typography.titleLarge) })
+                if (data.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                data.error?.let { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error) }
+            } },
             bottomBar = {
                 if (!wide) NavigationBar {
                     Destination.entries.forEach { item ->
@@ -114,19 +134,25 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
                         when (Destination.valueOf(destination)) {
                             Destination.Home -> HomeScreen(name, samples, { samples = it }, scan,
                                 { selected = Destination.MyFood.name }, insights,
-                                onHistory = { historyOpen = true }, onProfile = { selected = Destination.Profile.name })
-                            Destination.MyFood -> MyFoodFlow(inventory, onScan = { _ ->
+                                onHistory = { historyOpen = true }, onProfile = { selected = Destination.Profile.name },
+                                summary = if (samples) homeSummary(sampleFood(java.time.LocalDate.now()), sampleHistory(java.time.LocalDate.now())) else homeSummary(activeFood, history))
+                            Destination.MyFood -> MyFoodFlow(inventory, onScan = { id ->
+                                rescanFoodId = id; requestId = java.util.UUID.randomUUID().toString()
                                 holder.removeState("scanner-flow")
                                 mode = "After Buying"; scanReturn = Destination.MyFood.name; selected = Destination.Scan.name
-                            }, onRescue = { insights("Rescue") }, openItemId = openFoodId, onOpenHandled = { openFoodId = null })
+                            }, onRescue = { insights("Rescue") }, openItemId = openFoodId, onOpenHandled = { openFoodId = null },
+                                connectedItems = if (data.inventoryConnected) data.activeFood else null, mutations = actions.food)
                             Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
-                            Destination.Insights -> InsightsScreen(topic, { topic = it }, inventory.items,
+                            Destination.Insights -> InsightsScreen(topic, { topic = it }, activeFood,
                                 onExit = { selected = insightsReturn }, onInventory = { selected = Destination.MyFood.name }, entryId = insightsEntry,
-                                onHistory = { historyOpen = true })
-                            Destination.Profile -> ProfileScreen(name, { name = it }, inventory.items.size,
-                                inventoryHistory(inventory.items).size, theme, onTheme,
+                                onHistory = { historyOpen = true }, history = history,
+                                usedEvents = data.usedEvents + outcomes.filter { it.outcome == FoodOutcome.Used },
+                                discardedEvents = data.discardedEvents + outcomes.filter { it.outcome == FoodOutcome.Discarded },
+                                produceId = nutritionProduceId, nutritionProfile = data.nutritionProfile)
+                            Destination.Profile -> ProfileScreen(name, { name = it }, activeFood.size,
+                                history.size, theme, onTheme,
                                 onHistory = { historyOpen = true }, onInsights = { insights("Overview") },
-                                onFood = { selected = Destination.MyFood.name }, containsSamples = inventory.items.any { it.isDemo })
+                                onFood = { selected = Destination.MyFood.name }, containsSamples = activeFood.any { it.isDemo } || history.any { it.isDemo })
                         }
                     }
                 }

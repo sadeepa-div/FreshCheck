@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import com.freshcheck.app.ui.components.ProduceArt
+import com.freshcheck.app.ui.components.ProduceImage
 import java.time.LocalDate
 
 @Composable
@@ -18,7 +18,7 @@ fun FoodItemCard(item: FoodItemUi, today: LocalDate, actions: FoodActions) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row {
-                ProduceArt(Modifier.size(72.dp))
+                ProduceImage(item.latest?.imageUri, "Scan of ${item.name}", Modifier.size(72.dp))
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                     Text(item.name, style = MaterialTheme.typography.titleLarge)
                     Text("${item.category.label} · ${item.quantity} ${item.unit}", style = MaterialTheme.typography.bodyMedium)
@@ -28,7 +28,7 @@ fun FoodItemCard(item: FoodItemUi, today: LocalDate, actions: FoodActions) {
                     DropdownMenu(menu, { menu = false }) {
                         DropdownMenuItem(text = { Text("View details") }, onClick = { menu = false; actions.onOpen(item.id) })
                         DropdownMenuItem(text = { Text("Edit item") }, onClick = { menu = false; actions.onEdit(item.id) })
-                        DropdownMenuItem(text = { Text("Delete item") }, onClick = { menu = false; actions.onRemove(item.id, "Delete") })
+                        DropdownMenuItem(text = { Text("Delete item") }, onClick = { menu = false; actions.onDelete(item.id) })
                     }
                 }
             }

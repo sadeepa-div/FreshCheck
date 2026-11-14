@@ -14,7 +14,15 @@ import com.freshcheck.app.ui.components.*
 import java.util.Locale
 
 @Composable
-fun NutritionScreen(profile: NutritionProfile = DemoNutrition, onBack: () -> Unit) {
+fun NutritionScreen(profile: NutritionProfile = DemoNutrition, onBack: () -> Unit, produceId: String? = null) {
+    if (produceId != null && produceId != "demo-avocado" && profile.isDemo) {
+        Page {
+            TextButton(onBack) { Text("← Back") }
+            SectionTitle("Nutrition integration pending", "Selected produce ID · $produceId")
+            Text("No verified nutrition profile was supplied for this produce. No nutrient content is inferred from an image.")
+        }
+        return
+    }
     var grams by rememberSaveable(profile.name) { mutableStateOf(100) }
     Page {
         TextButton(onBack) { Text("← Insights") }

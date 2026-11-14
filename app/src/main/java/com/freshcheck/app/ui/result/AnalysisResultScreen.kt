@@ -22,9 +22,10 @@ data class ResultActions(
 @Composable
 fun AnalysisResultScreen(
     result: AnalysisResult, mode: ScanMode, actions: ResultActions,
+    rescanFoodId: String? = null,
     image: @Composable (String?) -> Unit = {
-        ProduceArt(Modifier.fillMaxWidth().height(190.dp))
-        Text(if (it == null) "Produce illustration · no photo supplied" else "Image preview integration pending",
+        ProduceImage(it, "Produce scan image", Modifier.fillMaxWidth().height(190.dp))
+        Text(if (it == null) "Produce illustration · no photo supplied" else "Selected scan image · local URI",
             style = MaterialTheme.typography.bodySmall)
     }
 ) {
@@ -42,6 +43,7 @@ fun AnalysisResultScreen(
         }
         image(result.imageUri)
         SectionTitle(result.produceName, result.category.label)
+        rescanFoodId?.let { Text("Rescan for food item · $it", style = MaterialTheme.typography.labelLarge) }
         result.analyzedAtLabel?.let { Text("Analysed: $it", style = MaterialTheme.typography.bodySmall) }
         FreshnessStatusCard(result.condition)
         Panel {
@@ -50,7 +52,8 @@ fun AnalysisResultScreen(
         }
         ConfidenceIndicator(result.confidence, result.isDemo)
         StorageGuidanceCard(result, expanded)
-        TextButton({ expanded = !expanded }) { Text(if (expanded) "Hide Storage Tips" else "View Storage Tips") }
+        if (result.guidance != null && result.condition != FreshnessCondition.VisiblySpoiled && result.condition != FreshnessCondition.Uncertain)
+            TextButton({ expanded = !expanded }) { Text(if (expanded) "Hide Storage Tips" else "View Storage Tips") }
         ActionButton("Scan Again", actions.onScanAgain, Modifier.fillMaxWidth())
         if (mode == ScanMode.AfterBuying) OutlinedButton(actions.onSave, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
             Text("Save to My Food · pending")

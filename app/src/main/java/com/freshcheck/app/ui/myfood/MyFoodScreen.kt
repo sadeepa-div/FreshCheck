@@ -14,7 +14,7 @@ import java.time.LocalDate
 
 @Composable
 fun MyFoodScreen(items: List<FoodItemUi>, actions: FoodActions, onScan: () -> Unit,
-    onLoadDemo: () -> Unit, onClearDemo: () -> Unit, onRescue: () -> Unit = {}) {
+    onLoadDemo: () -> Unit, onClearDemo: () -> Unit, onRescue: () -> Unit = {}, allowDemo: Boolean = true) {
     var query by rememberSaveable { mutableStateOf("") }
     var filterName by rememberSaveable { mutableStateOf(FoodFilter.All.name) }
     var sortName by rememberSaveable { mutableStateOf(FoodSort.Priority.name) }
@@ -30,15 +30,15 @@ fun MyFoodScreen(items: List<FoodItemUi>, actions: FoodActions, onScan: () -> Un
         Text(items.maxByOrNull { it.added }?.let { "Recently added · ${it.name} · ${it.added}" } ?: "Nothing added yet")
         ActionButton("Scan Food", onScan, Modifier.fillMaxWidth())
         OutlinedButton(onRescue, Modifier.fillMaxWidth()) { Text("Rescue My Food") }
-        if (items.any { it.isDemo }) {
+        if (allowDemo && items.any { it.isDemo }) {
             Text("DEMONSTRATION DATA · Edits affect session samples only. No notifications are scheduled.",
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             TextButton(onClearDemo) { Text("Clear demo inventory") }
-        } else TextButton(onLoadDemo) { Text("Explore sample inventory") }
+        } else if (allowDemo) TextButton(onLoadDemo) { Text("Explore sample inventory") }
         if (items.isEmpty()) {
             ProduceArt(Modifier.fillMaxWidth().height(150.dp))
             EmptyPanel("Your kitchen collection starts here", "No saved items are connected. Explore samples or scan modes to get started.",
-                "Explore sample inventory", onLoadDemo)
+                if (allowDemo) "Explore sample inventory" else "Scan Food", if (allowDemo) onLoadDemo else onScan)
         } else {
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Search produce name or type") }, singleLine = true)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -5,7 +5,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.freshcheck.app.ui.theme.FreshCheckTheme
 import java.time.LocalDate
 
-private val previewActions = FoodActions({}, {}, {}, {}, { _, _ -> })
+private val previewActions = FoodActions({}, {}, {}, {}, {}, {}, {})
 @Preview(name = "Sample food details · 320dp", widthDp = 320, heightDp = 760)
 @Composable
 private fun DetailsPreview() { FreshCheckTheme { Surface {
