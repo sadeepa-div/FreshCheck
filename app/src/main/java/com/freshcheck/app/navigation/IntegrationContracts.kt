@@ -33,5 +33,7 @@ data class AppIntegrationActions(
     val history: HistoryActions = HistoryActions(),
     val saveScan: (ScanSubmission, (UiOperationResult) -> Unit) -> Unit = { _, done ->
         done(UiOperationResult.Failed("Scan persistence integration pending. Nothing saved."))
-    }
+    },
+    val onScanClosed: () -> Unit = {},
+    val retryLoad: () -> Unit = {}
 )
