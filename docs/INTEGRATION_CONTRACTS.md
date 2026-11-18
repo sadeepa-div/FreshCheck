@@ -1,6 +1,9 @@
 # FreshCheck UI integration contracts — Phase 6A
 
-This describes UI boundaries, not implemented CameraX, LiteRT, Room, DataStore or reminder services.
+This describes UI boundaries, not connected CameraX, LiteRT, Room, DataStore or reminder services.
+
+Member 3 Phase 1 now provides an isolated Room foundation; it is not wired into these UI callbacks.
+See [DATABASE_FOUNDATION.md](DATABASE_FOUNDATION.md) for schema, repository APIs, retention and validation.
 
 ## IDs and provenance
 
@@ -52,7 +55,8 @@ Never persist isDemo results.
 
 HistoryActions is reused for individual deletion/clearing capabilities. Keep capabilities false until repository operations can confirm completion.
 Reminder actions/settings remain pending: connect permission, channel, stored reminder and scheduler states separately. A re-check date is not proof of scheduling.
-No reminder service or database is implemented by this phase.
+No reminder service is implemented by the UI phase. The separate Member 3 Phase 1 Room foundation
+stores reminder definitions only and is not connected to this UI.
 
 ## Async behavior and lifecycle
 
