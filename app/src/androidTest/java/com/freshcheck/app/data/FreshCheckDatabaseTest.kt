@@ -220,6 +220,38 @@ class FreshCheckDatabaseTest {
         assertTrue(repo.observeActiveFood().first().isEmpty())
     }
 
+    @Test fun recheckEditsDisableOnlyStaleDefinitionsAndDoNotScheduleAnything() = runBlocking {
+        success(repo.insertFood(food()))
+        success(repo.insertReminder(reminder()))
+        success(repo.updateFood(food().copy(quantity = 3.0)))
+        assertTrue(repo.observeReminders("test-food").first().single().enabled)
+        val date = LocalDate.now(clock).plusDays(1)
+        success(repo.updateFood(food().copy(recheck = date)))
+        assertEquals(date, success(repo.findFood("test-food"))!!.recheck)
+        val stored = repo.observeReminders("test-food").first().single()
+        assertFalse(stored.enabled)
+        assertEquals(ReminderState.Disabled, stored.state)
+        assertEquals(at, stored.dueAt) // No time was invented from the date-only edit.
+        success(repo.updateFood(food().copy(recheck = null)))
+        assertNull(success(repo.findFood("test-food"))!!.recheck)
+        assertFalse(repo.observeReminders("test-food").first().single().enabled)
+    }
+
+    @Test fun reminderDisableFailureRollsBackTheFoodEdit() = runBlocking {
+        success(repo.insertFood(food()))
+        success(repo.insertReminder(reminder()))
+        db.openHelper.writableDatabase.execSQL("""
+            CREATE TRIGGER fail_reminder BEFORE UPDATE ON reminders
+            BEGIN SELECT RAISE(ABORT, 'injected test failure'); END
+        """.trimIndent())
+        assertTrue(repo.updateFood(food().copy(quantity = 5.0, recheck = LocalDate.now(clock)))
+            is DatabaseResult.Failure)
+        val unchanged = success(repo.findFood("test-food"))!!
+        assertNull(unchanged.recheck)
+        assertEquals(2.0, unchanged.quantity, 0.0)
+        assertTrue(repo.observeReminders("test-food").first().single().enabled)
+    }
+
     @Test fun fileDatabaseKeepsFoodScansOutcomesAndRemindersAcrossReopen() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "phase-one-test-${java.util.UUID.randomUUID()}.db"
