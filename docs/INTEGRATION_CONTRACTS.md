@@ -2,8 +2,9 @@
 
 This describes UI boundaries, not connected CameraX, LiteRT, Room, DataStore or reminder services.
 
-Member 3 Phase 1 now provides an isolated Room foundation; it is not wired into these UI callbacks.
-See [DATABASE_FOUNDATION.md](DATABASE_FOUNDATION.md) for schema, repository APIs, retention and validation.
+Member 3 Phase 2 connects the Room foundation through FreshCheckRoute and FreshCheckViewModel.
+See [DATABASE_UI_INTEGRATION.md](DATABASE_UI_INTEGRATION.md) for lifecycle, callbacks, timestamp requirements and pending scanner inputs.
+See [DATABASE_FOUNDATION.md](DATABASE_FOUNDATION.md) for the Phase 1 schema and retention policy.
 
 ## IDs and provenance
 
@@ -28,7 +29,8 @@ ScanRequest contains requestId, ScanMode and optional rescanFoodId.
 Preserve all three from Food Details through capture/inference/result and persistence.
 A food rescan never creates a replacement food ID. An explicit new scan uses a new request ID; Scan Again within the flow retains the food association.
 AnalysisResult contains visible condition, nullable finite confidence in [0,1], optional URI/timestamp/guidance and canonical produceId.
-ScanSubmission combines the request with AnalysisResult. This is an unsaved proposal, not a stored scan record.
+ScanSubmission combines the request with AnalysisResult and optional scannedAt: Instant. This is an unsaved proposal, not a stored scan record.
+Production acceptance/saving requires the actual scannedAt supplied by Member 2; a display label or current-time fallback is not used.
 Supply the original request with completion so stale inference output cannot attach to a newer request.
 
 Existing ScannerUiState, ScannerActions and ScanScreen preview slot remain available. Member 2 must provide:
@@ -56,7 +58,7 @@ Never persist isDemo results.
 HistoryActions is reused for individual deletion/clearing capabilities. Keep capabilities false until repository operations can confirm completion.
 Reminder actions/settings remain pending: connect permission, channel, stored reminder and scheduler states separately. A re-check date is not proof of scheduling.
 No reminder service is implemented by the UI phase. The separate Member 3 Phase 1 Room foundation
-stores reminder definitions only and is not connected to this UI.
+stores reminder definitions only. Phase 2 persists re-check edits and disables stale definitions atomically; notifications remain unconnected.
 
 ## Async behavior and lifecycle
 
@@ -95,6 +97,8 @@ Reminder dates are check-in suggestions, never guaranteed expiry dates.
 AppIntegrationActions.onScanRequest receives the current request when the scanner opens or its mode/request changes.
 Member 2 returns ScanSubmission in AppUiData.completedAnalysis. analysisFor accepts it only if the request ID, mode and optional food ID all match.
 Do not assign a UI demo request ID to real results. Root navigation generates a fresh request ID on a new scan or Scan Again while preserving the rescan food ID.
-The prepared coordinator does not invoke camera or inference services; the callback is the adapter boundary.
+The coordinator does not invoke camera or inference services. Phase 2 registers requests with FreshCheckViewModel;
+Member 2 can observe scanRequests and return a real timestamped submission via acceptAnalysis.
+Accepted analysis is distinct from confirmed persistence. New After Buying inventory creation remains pending until a user supplies food details.
 AppUiData.isLoading/error are displayed in the main scaffold. Adapters should also use ScannerUiState for scanner-specific loading/error presentation.
 A confirmed operation updates snapshots from Member 3; the UI does not fabricate a replacement scan or claim a notification was scheduled.

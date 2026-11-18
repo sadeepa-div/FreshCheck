@@ -2,8 +2,10 @@
 
 ## Scope and compatibility
 
-This layer is prepared on Member 3's feature/database-reminders branch. It is not wired into
-MainActivity, FreshCheckApp, DemoInventory, camera/inference, WorkManager, or notifications.
+This documents the Phase 1 foundation on Member 3's feature/database-reminders branch.
+Phase 2 now connects the repository to MainActivity/FreshCheckApp through a ViewModel;
+see [DATABASE_UI_INTEGRATION.md](DATABASE_UI_INTEGRATION.md). DemoInventory remains isolated;
+camera/inference, WorkManager and notifications are not implemented by these phases.
 
 The existing AGP 9.5.1, Kotlin Compose plugin 2.2.10, Compose BOM and SDK settings are preserved.
 Room 2.8.5 and KSP2 2.3.9 are declared in the version catalog. AGP 9 uses built-in Kotlin;
@@ -151,7 +153,10 @@ Once a compatible device is connected, run the connectedDebugAndroidTest command
 execute the Room suite. The new tests verify production behavior using isolated synthetic data;
 none prepopulate or modify the application's named production database.
 
-## Phase 2 integration
+## Original Phase 2 integration plan
+
+Implemented behavior and validation are now documented in [DATABASE_UI_INTEGRATION.md](DATABASE_UI_INTEGRATION.md).
+The original handoff requirements follow:
 
 Add a lifecycle-aware ViewModel adapter that collects independent repository inventory,
 history and outcome streams into AppUiData. Translate DatabaseResult into UiOperationResult
