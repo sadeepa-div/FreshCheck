@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.tooling.preview.Preview
 import com.freshcheck.app.navigation.*
+import com.freshcheck.app.integration.rememberUiCompletionGate
 import com.freshcheck.app.ui.theme.FreshCheckTheme
 import java.time.LocalDate
 
@@ -21,13 +22,16 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
     var pendingAction by rememberSaveable { mutableStateOf(FoodMutation.Delete.name) }
     var feedback by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    val items = connectedItems ?: inventory.items
+    var demoMode by rememberSaveable { mutableStateOf(false) }
+    val sampleSession = connectedItems == null || demoMode
+    val completions = rememberUiCompletionGate()
+    val items = if (sampleSession) inventory.items else connectedItems.orEmpty()
     LaunchedEffect(openItemId) {
         if (openItemId != null) { itemId = openItemId; route = "details"; onOpenHandled() }
     }
     val item = items.firstOrNull { it.id == itemId }
-    fun back() { route = if (route == "edit" || route == "journey") "details" else "list" }
-    fun ask(id: String, action: FoodMutation) { pendingId = id; pendingAction = action.name }
+    fun back() { if (!busy) route = if (route == "edit" || route == "journey") "details" else "list" }
+    fun ask(id: String, action: FoodMutation) { if (!busy) { pendingId = id; pendingAction = action.name } }
     fun completion(result: UiOperationResult) {
         busy = false; pendingId = null
         when (result) {
@@ -37,35 +41,40 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
     }
     BackHandler(route != "list" || pendingId != null) { if (!busy) { if (pendingId != null) pendingId = null else back() } }
     val actions = FoodActions(
-        onOpen = { itemId = it; route = "details" }, onEdit = { itemId = it; route = "edit" },
-        onJourney = { itemId = it; route = "journey" }, onRescan = onScan,
+        onOpen = { if (!busy) { itemId = it; route = "details" } }, onEdit = { if (!busy) { itemId = it; route = "edit" } },
+        onJourney = { if (!busy) { itemId = it; route = "journey" } }, onRescan = { if (!busy) onScan(it) },
         onMarkUsed = { ask(it, FoodMutation.Used) }, onMarkDiscarded = { ask(it, FoodMutation.Discarded) },
         onDelete = { ask(it, FoodMutation.Delete) })
+    Column {
+    if (connectedItems != null) TextButton({
+        if (!busy) { demoMode = !demoMode; itemId = null; route = "list" }
+    }, enabled = !busy) { Text(if (demoMode) "Back to saved inventory" else "Explore sample inventory") }
     AnimatedContent(if (item == null) "list" else route, label = "Food navigation") { screen ->
         when (screen) {
             "details" -> item?.let { FoodDetailsScreen(it, actions, ::back) }
             "edit" -> item?.let { EditFoodItemScreen(it, { updated ->
-                if (connectedItems == null && updated.isDemo) {
+                if (sampleSession && updated.isDemo) {
                     inventory.update(updated); route = "details"; feedback = "Sample updated for this session only. No notification scheduled."
                 } else if (!busy) {
                     busy = true
-                    mutations.edit(updated) { result ->
+                    mutations.edit(updated, completions.once { result ->
                         busy = false
                         if (result == UiOperationResult.Confirmed) { route = "details"; feedback = "Repository confirmed changes." }
                         else feedback = (result as UiOperationResult.Failed).message
-                    }
+                    })
                 }
             }, ::back) }
             "journey" -> item?.let { FreshnessJourneyScreen(it, ::back, { onScan(it.id) }) }
             else -> MyFoodScreen(items, actions, { onScan(null) },
-                { if (connectedItems == null) inventory.load(LocalDate.now()) },
-                { if (connectedItems == null) { inventory.clear(); itemId = null; route = "list" } }, onRescue,
-                allowDemo = connectedItems == null)
+                { if (sampleSession) inventory.load(LocalDate.now()) },
+                { if (sampleSession) { inventory.clear(); itemId = null; route = "list" } }, onRescue,
+                allowDemo = sampleSession)
         }
+    }
     }
     pendingId?.let { id ->
         val action = FoodMutation.valueOf(pendingAction)
-        val isDemo = connectedItems == null && items.any { it.id == id && it.isDemo }
+        val isDemo = sampleSession && items.any { it.id == id && it.isDemo }
         val description = when (action) {
             FoodMutation.Used -> "Record this item as Used and remove it from active inventory. Its scan history should be retained."
             FoodMutation.Discarded -> "Record this item as Discarded and remove it from active inventory. Its scan history should be retained."
@@ -81,12 +90,13 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
                         FoodMutation.Delete -> inventory.remove(id)
                     }
                     pendingId = null; route = "list"; feedback = "Demo action applied locally only."
-                } else {
+                } else if (!busy) {
                     busy = true
+                    val done = completions.once(::completion)
                     when (action) {
-                        FoodMutation.Used -> mutations.markUsed(id, ::completion)
-                        FoodMutation.Discarded -> mutations.markDiscarded(id, ::completion)
-                        FoodMutation.Delete -> mutations.delete(id, ::completion)
+                        FoodMutation.Used -> mutations.markUsed(id, done)
+                        FoodMutation.Discarded -> mutations.markDiscarded(id, done)
+                        FoodMutation.Delete -> mutations.delete(id, done)
                     }
                 }
             }, enabled = !busy) { Text("Confirm ${action.label}") } },

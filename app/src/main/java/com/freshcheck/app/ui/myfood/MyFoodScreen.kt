@@ -37,7 +37,9 @@ fun MyFoodScreen(items: List<FoodItemUi>, actions: FoodActions, onScan: () -> Un
         } else if (allowDemo) TextButton(onLoadDemo) { Text("Explore sample inventory") }
         if (items.isEmpty()) {
             ProduceArt(Modifier.fillMaxWidth().height(150.dp))
-            EmptyPanel("Your kitchen collection starts here", "No saved items are connected. Explore samples or scan modes to get started.",
+            EmptyPanel("Your kitchen collection starts here",
+                if (allowDemo) "No sample items are loaded. Explore samples or scan modes to get started."
+                else "No active saved food items. New scan-to-inventory creation awaits scanner integration and food details.",
                 if (allowDemo) "Explore sample inventory" else "Scan Food", if (allowDemo) onLoadDemo else onScan)
         } else {
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), label = { Text("Search produce name or type") }, singleLine = true)

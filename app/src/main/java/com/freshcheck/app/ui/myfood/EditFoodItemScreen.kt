@@ -20,7 +20,7 @@ fun EditFoodItemScreen(item: FoodItemUi, onSave: (FoodItemUi) -> Unit, onBack: (
     val errors = validateFoodEdit(values, LocalDate.now())
     Page {
         TextButton(onBack) { Text("← Food Details") }
-        SectionTitle("Edit ${item.name}", if (item.isDemo) "Sample changes stay in this session." else "Persistence integration pending.")
+        SectionTitle("Edit ${item.name}", if (item.isDemo) "Sample changes stay in this session." else "Changes are saved after database confirmation.")
         fun error(key: String) = if (submitted) errors[key] else null
         @Composable fun Field(label: String, value: String, key: String, change: (String) -> Unit) {
             OutlinedTextField(value, change, Modifier.fillMaxWidth(), label = { Text(label) },
