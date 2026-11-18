@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.freshcheck.app.ui.components.*
 import com.freshcheck.app.ui.history.HistoryActions
 import com.freshcheck.app.ui.result.VisualAssessmentNotice
+import com.freshcheck.app.integration.rememberUiCompletionGate
 
 enum class ThemePreference(val label: String) { System("Follow system"), Light("Light mode"), Dark("Dark mode") }
 /** Member 3 may persist theme and reminder preferences behind these UI callbacks.
@@ -20,7 +21,8 @@ fun SettingsScreen(theme: ThemePreference, onTheme: (ThemePreference) -> Unit, o
     onPage: (String) -> Unit, onHistory: () -> Unit, historyActions: HistoryActions = HistoryActions(),
     notification: NotificationSettingsUi = NotificationSettingsUi()) {
     var confirm by rememberSaveable { mutableStateOf(false) }
-    var busy by rememberSaveable { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    val completions = rememberUiCompletionGate()
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     Page {
         TextButton(onBack) { Text("← Profile") }
@@ -45,7 +47,8 @@ fun SettingsScreen(theme: ThemePreference, onTheme: (ThemePreference) -> Unit, o
             TextButton({ onPage("Privacy") }) { Text("Privacy and on-device AI") }
             TextButton(onHistory) { Text("Review individual scan records") }
             OutlinedButton({ confirm = true }, enabled = historyActions.canClear && !busy) { Text("Clear local history") }
-            Text("Clearing history is disabled until a real repository is connected. No simulated deletion is presented as successful.")
+            Text(if (historyActions.canClear) "Clear saved scan history after confirmation. Food items and outcome records are retained."
+                else "Clearing history is disabled until a real repository is connected. No simulated deletion is presented as successful.")
         }
         TextButton({ onPage("About") }) { Text("About FreshCheck") }
         Text(VisualAssessmentNotice, style = MaterialTheme.typography.bodySmall)
@@ -53,10 +56,12 @@ fun SettingsScreen(theme: ThemePreference, onTheme: (ThemePreference) -> Unit, o
     if (confirm) AlertDialog(onDismissRequest = { if (!busy) confirm = false }, title = { Text("Clear local history?") },
         text = { Text("All scan history will be removed by the connected repository. This cannot be undone.") },
         confirmButton = { TextButton({
+            if (!busy) {
             busy = true
-            historyActions.clear { success ->
+            historyActions.clear(completions.once { success ->
                 busy = false; confirm = false
                 message = if (success) "Repository confirmed history was cleared." else "Clearing history was not confirmed."
+            })
             }
         }, enabled = !busy) { Text("Clear history") } },
         dismissButton = { TextButton({ confirm = false }, enabled = !busy) { Text("Cancel") } })
@@ -78,9 +83,9 @@ fun InformationScreen(page: String, onBack: () -> Unit) {
                 Text("AI-assisted fruit and vegetable visible-condition assessment.")
                 Text("EC5208 · Mobile Application Development\nUniversity project · 3 team members\nVersion $version")
             } else {
-                Text("Offline core features need no login. This frontend currently uses labelled session samples.")
+                Text("Offline core features need no login. Saved inventory, scan history and outcomes use the local Room database. Sample exploration stays separate.")
                 Text("On-device inference is planned; the real model is not connected in this UI. No real image analysis is performed by the demo.")
-                Text("Camera capture and scan-image storage are not implemented here. Retention and deletion policies must be supplied when Member 2 and Member 3 integrate image storage.")
+                Text("Camera capture is not connected here. Saved scans retain local image URI references; durable image access and file retention still require scanner integration.")
                 Text("Theme and display name are session preferences, restored across rotation where possible, with no account or permanent preference store.")
             }
             Text(VisualAssessmentNotice)

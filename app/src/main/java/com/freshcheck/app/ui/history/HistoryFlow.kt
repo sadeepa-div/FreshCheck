@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.freshcheck.app.ui.components.*
 import com.freshcheck.app.ui.insights.*
 import com.freshcheck.app.ui.result.*
+import com.freshcheck.app.integration.rememberUiCompletionGate
 
 /** Capabilities remain false until repository callbacks can report confirmed completion. */
 data class HistoryActions(
@@ -29,7 +30,8 @@ fun HistoryFlow(records: List<ScanHistoryRecord>, onClose: () -> Unit, onFood: (
     var newest by rememberSaveable { mutableStateOf(true) }
     var samples by rememberSaveable { mutableStateOf(false) }
     var confirm by rememberSaveable { mutableStateOf(false) }
-    var busy by rememberSaveable { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    val completions = rememberUiCompletionGate()
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     val data = records + if (samples) sampleHistory(java.time.LocalDate.now()) else emptyList()
     val record = data.firstOrNull { it.id == id }
@@ -76,17 +78,20 @@ fun HistoryFlow(records: List<ScanHistoryRecord>, onClose: () -> Unit, onFood: (
                 Text(VisualAssessmentNotice)
                 selected.foodId?.let { foodId -> ActionButton("Open associated Food Details", { onFood(foodId) }, Modifier.fillMaxWidth()) }
                 OutlinedButton({ confirm = true }, enabled = actions.canDelete && !selected.isDemo && !busy) { Text("Delete scan") }
-                Text("Deletion is disabled until the real history repository confirms operations. Samples cannot be deleted as real records.")
+                Text(if (actions.canDelete) "Deletion is applied to saved history after database confirmation. Samples cannot be deleted as real records."
+                    else "Deletion is disabled until the real history repository confirms operations. Samples cannot be deleted as real records.")
             }
         }
     }
     if (confirm && record != null) AlertDialog(onDismissRequest = { if (!busy) confirm = false },
         title = { Text("Delete scan?") }, text = { Text("This operation must be confirmed by the connected repository.") },
         confirmButton = { TextButton({
+            if (!busy) {
             busy = true
-            actions.delete(record.id) { success ->
+            actions.delete(record.id, completions.once { success ->
                 busy = false; confirm = false
                 if (success) { id = null; message = "Repository confirmed deletion." } else message = "Deletion was not confirmed."
+            })
             }
         }, enabled = !busy) { Text("Delete") } },
         dismissButton = { TextButton({ confirm = false }, enabled = !busy) { Text("Cancel") } })
