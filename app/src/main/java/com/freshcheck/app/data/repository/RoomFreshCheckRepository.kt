@@ -47,6 +47,8 @@ class RoomFreshCheckRepository(
             checkChanged(food.update(item.toEntity(clock.instant()).copy(
                 createdAt = existing.createdAt, status = existing.status
             )))
+            // A date-only edit cannot safely choose a reminder time. Disable stale definitions atomically.
+            if (existing.recheck != item.recheck) reminders.disableForFood(item.id, clock.instant())
         }
     }
 
