@@ -25,7 +25,9 @@ data class ScannerActions(
 
 /** Request identity belongs to the coordinator. Member 2 must echo it in completed work. */
 data class ScanRequest(val requestId: String, val mode: ScanMode, val rescanFoodId: String? = null)
-data class ScanSubmission(val request: ScanRequest, val result: AnalysisResult) {
+/** scannedAt is Member 2's actual event instant; null keeps legacy/demo callers display-only. */
+data class ScanSubmission(val request: ScanRequest, val result: AnalysisResult,
+    val scannedAt: java.time.Instant? = null) {
     val rescanFoodId get() = request.rescanFoodId
 }
 

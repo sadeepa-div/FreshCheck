@@ -12,6 +12,7 @@ import com.freshcheck.app.ui.result.*
 import com.freshcheck.app.ui.theme.FreshCheckTheme
 import kotlinx.coroutines.delay
 import com.freshcheck.app.navigation.UiOperationResult
+import com.freshcheck.app.integration.rememberUiCompletionGate
 
 /**
  * Explicit demo-only coordinator. Replace this adapter with Member 2's lifecycle-aware state owner.
@@ -24,15 +25,18 @@ fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit
     providedResult: AnalysisResult? = null,
     onNutritionForProduce: (String?) -> Unit = { onNutrition() },
     onNewRequest: () -> Unit = {},
-    onSubmit: (ScanSubmission, (UiOperationResult) -> Unit) -> Unit = { _, done -> done(UiOperationResult.Failed("Scan persistence integration pending. Nothing saved.")) }) {
+    onSubmit: (ScanSubmission, (UiOperationResult) -> Unit) -> Unit = { _, done -> done(UiOperationResult.Failed("Scan persistence integration pending. Nothing saved.")) },
+    providedSubmission: ScanSubmission? = null) {
     val mode = ScanMode.entries.firstOrNull { it.label == modeLabel } ?: ScanMode.BeforeBuying
     var stage by rememberSaveable { mutableStateOf("scanner") }
     var conditionName by rememberSaveable { mutableStateOf(FreshnessCondition.Fresh.name) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     val condition = FreshnessCondition.valueOf(conditionName)
     val result = providedResult ?: DemoResults.create(condition)
-    val submission = ScanSubmission(request.copy(mode = mode), result)
-    var saving by remember { mutableStateOf(false) }
+    val submission = providedSubmission?.takeIf { it.request == request.copy(mode = mode) && it.result == result }
+        ?: ScanSubmission(request.copy(mode = mode), result)
+    val completions = key(request) { rememberUiCompletionGate() }
+    var saving by remember(request) { mutableStateOf(false) }
     // Cancellation on exit prevents stale completion after closing; rotation safely restarts demo preparation.
     LaunchedEffect(stage) {
         if (stage == "loading") { delay(1400); stage = "result" }
@@ -50,13 +54,13 @@ fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit
                     if (result.isDemo) message = "Inventory integration pending. This sample has not been saved."
                     else if (!saving) {
                         saving = true
-                        onSubmit(submission) { outcome ->
+                        onSubmit(submission, completions.once { outcome ->
                             saving = false
                             message = when (outcome) {
                                 UiOperationResult.Confirmed -> "Repository confirmed scan persistence."
                                 is UiOperationResult.Failed -> outcome.message
                             }
-                        }
+                        })
                     }
                 },
                 onNutrition = { onNutritionForProduce(result.produceId) },

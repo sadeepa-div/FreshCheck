@@ -55,8 +55,12 @@ fun AnalysisResultScreen(
         if (result.guidance != null && result.condition != FreshnessCondition.VisiblySpoiled && result.condition != FreshnessCondition.Uncertain)
             TextButton({ expanded = !expanded }) { Text(if (expanded) "Hide Storage Tips" else "View Storage Tips") }
         ActionButton("Scan Again", actions.onScanAgain, Modifier.fillMaxWidth())
-        if (mode == ScanMode.AfterBuying) OutlinedButton(actions.onSave, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-            Text("Save to My Food · pending")
+        if (mode == ScanMode.AfterBuying || !result.isDemo) OutlinedButton(actions.onSave, Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            Text(when {
+                mode == ScanMode.BeforeBuying -> "Save scan to history"
+                rescanFoodId != null -> "Save rescan"
+                else -> "Save to My Food · pending"
+            })
         } else Text("Before Buying · view this assessment without saving.", style = MaterialTheme.typography.bodySmall)
         OutlinedButton(actions.onNutrition, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("View Nutrition") }
         if (result.condition != FreshnessCondition.VisiblySpoiled && result.condition != FreshnessCondition.Uncertain) {
