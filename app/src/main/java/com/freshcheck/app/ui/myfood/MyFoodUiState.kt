@@ -88,7 +88,8 @@ data class FoodActions(
     val onJourney: (String) -> Unit, val onRescan: (String) -> Unit,
     val onMarkUsed: (String) -> Unit,
     val onMarkDiscarded: (String) -> Unit,
-    val onDelete: (String) -> Unit
+    val onDelete: (String) -> Unit,
+    val onReminder: (String) -> Unit = {}
 )
 /** Isolated, opt-in UI samples. Saveable only for session restoration, no database or notification effects. */
 class DemoInventory(initial: List<FoodItemUi> = emptyList(),

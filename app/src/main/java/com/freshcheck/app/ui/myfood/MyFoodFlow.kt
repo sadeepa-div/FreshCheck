@@ -15,7 +15,9 @@ enum class FoodMutation(val label: String) { Used("Mark as Used"), Discarded("Ma
 @Composable
 fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: () -> Unit = {},
     openItemId: String? = null, onOpenHandled: () -> Unit = {},
-    connectedItems: List<FoodItemUi>? = null, mutations: FoodMutationActions = FoodMutationActions()) {
+    connectedItems: List<FoodItemUi>? = null, mutations: FoodMutationActions = FoodMutationActions(),
+    reminderData: com.freshcheck.app.reminders.ReminderUiData = com.freshcheck.app.reminders.ReminderUiData(),
+    reminderActions: com.freshcheck.app.reminders.ReminderActions = com.freshcheck.app.reminders.ReminderActions()) {
     var route by rememberSaveable { mutableStateOf("list") }
     var itemId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -27,10 +29,10 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
     val completions = rememberUiCompletionGate()
     val items = if (sampleSession) inventory.items else connectedItems.orEmpty()
     LaunchedEffect(openItemId) {
-        if (openItemId != null) { itemId = openItemId; route = "details"; onOpenHandled() }
+        if (openItemId != null) { demoMode = false; itemId = openItemId; route = "details"; onOpenHandled() }
     }
     val item = items.firstOrNull { it.id == itemId }
-    fun back() { if (!busy) route = if (route == "edit" || route == "journey") "details" else "list" }
+    fun back() { if (!busy) route = if (route == "edit" || route == "journey" || route == "reminder") "details" else "list" }
     fun ask(id: String, action: FoodMutation) { if (!busy) { pendingId = id; pendingAction = action.name } }
     fun completion(result: UiOperationResult) {
         busy = false; pendingId = null
@@ -44,7 +46,8 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
         onOpen = { if (!busy) { itemId = it; route = "details" } }, onEdit = { if (!busy) { itemId = it; route = "edit" } },
         onJourney = { if (!busy) { itemId = it; route = "journey" } }, onRescan = { if (!busy) onScan(it) },
         onMarkUsed = { ask(it, FoodMutation.Used) }, onMarkDiscarded = { ask(it, FoodMutation.Discarded) },
-        onDelete = { ask(it, FoodMutation.Delete) })
+        onDelete = { ask(it, FoodMutation.Delete) },
+        onReminder = { if (!busy) { itemId = it; route = "reminder" } })
     Column {
     if (connectedItems != null) TextButton({
         if (!busy) { demoMode = !demoMode; itemId = null; route = "list" }
@@ -52,6 +55,7 @@ fun MyFoodFlow(inventory: DemoInventory, onScan: (String?) -> Unit, onRescue: ()
     AnimatedContent(if (item == null) "list" else route, label = "Food navigation") { screen ->
         when (screen) {
             "details" -> item?.let { FoodDetailsScreen(it, actions, ::back) }
+            "reminder" -> item?.let { com.freshcheck.app.ui.reminders.ReminderScreen(it, reminderData, reminderActions, ::back) }
             "edit" -> item?.let { EditFoodItemScreen(it, { updated ->
                 if (sampleSession && updated.isDemo) {
                     inventory.update(updated); route = "details"; feedback = "Sample updated for this session only. No notification scheduled."

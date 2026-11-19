@@ -19,7 +19,9 @@ data class NotificationSettingsUi(val permissionExplanation: String = "Permissio
 @Composable
 fun SettingsScreen(theme: ThemePreference, onTheme: (ThemePreference) -> Unit, onBack: () -> Unit,
     onPage: (String) -> Unit, onHistory: () -> Unit, historyActions: HistoryActions = HistoryActions(),
-    notification: NotificationSettingsUi = NotificationSettingsUi()) {
+    notification: NotificationSettingsUi = NotificationSettingsUi(),
+    reminderData: com.freshcheck.app.reminders.ReminderUiData = com.freshcheck.app.reminders.ReminderUiData(),
+    reminderActions: com.freshcheck.app.reminders.ReminderActions = com.freshcheck.app.reminders.ReminderActions()) {
     var confirm by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val completions = rememberUiCompletionGate()
@@ -34,14 +36,7 @@ fun SettingsScreen(theme: ThemePreference, onTheme: (ThemePreference) -> Unit, o
             }
             Text("Applies to the whole app. Session-only selection; no DataStore persistence is connected.")
         }
-        Panel {
-            SectionTitle("Reminder notifications")
-            Text(notification.permissionExplanation)
-            Row { Text("Enable reminders", Modifier.weight(1f)); Switch(false, null, enabled = false) }
-            Row { Text("Re-check reminders", Modifier.weight(1f)); Switch(false, null, enabled = false) }
-            OutlinedButton({}, enabled = false) { Text("Reminder preferences · pending") }
-            Text("Controls stay disabled until permission and Member 3's reminder service are connected. No notifications are scheduled.")
-        }
+        com.freshcheck.app.ui.reminders.ReminderSettingsPanel(reminderData, reminderActions)
         Panel {
             SectionTitle("Privacy & data")
             TextButton({ onPage("Privacy") }) { Text("Privacy and on-device AI") }

@@ -38,7 +38,7 @@ fun FoodDetailsScreen(item: FoodItemUi, actions: FoodActions, onBack: () -> Unit
         ActionButton("View Full Freshness Journey", { actions.onJourney(item.id) }, Modifier.fillMaxWidth())
         ActionButton("Rescan Food", { actions.onRescan(item.id) }, Modifier.fillMaxWidth())
         OutlinedButton({ actions.onEdit(item.id) }, Modifier.fillMaxWidth()) { Text("Edit Item") }
-        OutlinedButton({ actions.onEdit(item.id) }, Modifier.fillMaxWidth()) { Text("Set or Edit Reminder") }
+        OutlinedButton({ actions.onReminder(item.id) }, Modifier.fillMaxWidth()) { Text("Set or Edit Reminder") }
         TextButton({ actions.onMarkUsed(item.id) }) { Text("Mark as Used") }
         TextButton({ actions.onMarkDiscarded(item.id) }) { Text("Mark as Discarded") }
         TextButton({ actions.onDelete(item.id) }) { Text("Delete Item", color = MaterialTheme.colorScheme.error) }

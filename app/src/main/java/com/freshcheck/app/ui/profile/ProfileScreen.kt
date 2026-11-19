@@ -16,13 +16,16 @@ fun ProfileScreen(name: String, onName: (String) -> Unit, foodCount: Int = 0, sc
     theme: ThemePreference = ThemePreference.System, onTheme: (ThemePreference) -> Unit = {},
     onHistory: () -> Unit = {}, onInsights: () -> Unit = {}, onFood: () -> Unit = {},
     containsSamples: Boolean = false,
-    historyActions: com.freshcheck.app.ui.history.HistoryActions = com.freshcheck.app.ui.history.HistoryActions()) {
+    historyActions: com.freshcheck.app.ui.history.HistoryActions = com.freshcheck.app.ui.history.HistoryActions(),
+    reminderData: com.freshcheck.app.reminders.ReminderUiData = com.freshcheck.app.reminders.ReminderUiData(),
+    reminderActions: com.freshcheck.app.reminders.ReminderActions = com.freshcheck.app.reminders.ReminderActions()) {
     var route by rememberSaveable { mutableStateOf("Profile") }
     fun back() { route = if (route == "About" || route == "Privacy") "Settings" else "Profile" }
     BackHandler(route != "Profile") { back() }
     AnimatedContent(route, label = "Profile pages") { page ->
         when (page) {
-            "Settings" -> SettingsScreen(theme, onTheme, ::back, { route = it }, onHistory, historyActions = historyActions)
+            "Settings" -> SettingsScreen(theme, onTheme, ::back, { route = it }, onHistory, historyActions = historyActions,
+                reminderData = reminderData, reminderActions = reminderActions)
             "About", "Privacy" -> InformationScreen(page, ::back)
             else -> Page {
                 SectionTitle("FreshCheck · Your space", "Offline core features. No login needed.")
