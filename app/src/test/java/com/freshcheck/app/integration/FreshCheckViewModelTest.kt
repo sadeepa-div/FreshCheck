@@ -328,6 +328,22 @@ class FreshCheckViewModelTest {
         assertTrue(cancelled)
     }
 
+    @Test fun notificationNavigationWaitsForDataRejectsMissingFoodAndAcknowledgesOnce() = runTest(dispatcher) {
+        val repo = FakeFreshCheckRepository().apply { food.value = listOf(food()) }
+        val vm = model(repo)
+        val target = com.freshcheck.app.reminders.NotificationFoodTarget("food", "tap-token")
+        assertFalse(vm.openNotificationFood(target))
+        runCurrent()
+        assertTrue(vm.openNotificationFood(target))
+        assertEquals(target, vm.uiState.value.foodToOpen)
+        vm.foodOpened()
+        vm.foodOpened()
+        assertNull(vm.uiState.value.foodToOpen)
+        assertFalse(vm.openNotificationFood(target.copy(foodId = "missing")))
+        assertFalse(vm.openNotificationFood(target.copy(foodId = "demo-food")))
+        assertNotNull(vm.uiState.value.error)
+    }
+
     @Test fun completionGateDefersAndDeliversOnceOrDropsAfterDisposal() = runTest(dispatcher) {
         val ready = CompletableDeferred<Unit>()
         val scope = CoroutineScope(SupervisorJob() + dispatcher)
