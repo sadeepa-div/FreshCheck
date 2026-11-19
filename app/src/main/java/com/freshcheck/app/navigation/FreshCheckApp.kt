@@ -77,6 +77,14 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
     var insightsReturn by rememberSaveable { mutableStateOf(Destination.Home.name) }
     var insightsEntry by rememberSaveable { mutableStateOf(0) }
     val holder = rememberSaveableStateHolder()
+    LaunchedEffect(data.foodToOpen?.token) {
+        data.foodToOpen?.let { target ->
+            historyOpen = false
+            selected = Destination.MyFood.name
+            openFoodId = target.foodId
+            actions.onFoodOpened()
+        }
+    }
     val scan: (String) -> Unit = { holder.removeState("scanner-flow"); rescanFoodId = null; requestId = java.util.UUID.randomUUID().toString(); mode = it; scanReturn = Destination.Home.name; selected = Destination.Scan.name }
     val insights: (String) -> Unit = { nutritionProduceId = null; insightsEntry++; topic = it; insightsReturn = selected; selected = Destination.Insights.name }
     // Logical navigation closes the request; configuration recreation keeps the same request alive.
@@ -150,7 +158,8 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
                                 holder.removeState("scanner-flow")
                                 mode = "After Buying"; scanReturn = Destination.MyFood.name; selected = Destination.Scan.name
                             }, onRescue = { insights("Rescue") }, openItemId = openFoodId, onOpenHandled = { openFoodId = null },
-                                connectedItems = if (usesRepository) data.activeFood else null, mutations = actions.food)
+                                connectedItems = if (usesRepository) data.activeFood else null, mutations = actions.food,
+                                reminderData = data.reminderData, reminderActions = actions.reminders)
                             Destination.Scan -> Unit // Full-screen scanner is hosted above the dashboard scaffold.
                             Destination.Insights -> InsightsScreen(topic, { topic = it }, activeFood,
                                 onExit = { selected = insightsReturn }, onInventory = { selected = Destination.MyFood.name }, entryId = insightsEntry,
@@ -161,7 +170,7 @@ private fun FreshCheckContent(theme: ThemePreference, onTheme: (ThemePreference)
                             Destination.Profile -> ProfileScreen(name, { name = it }, activeFood.size,
                                 history.size, theme, onTheme,
                                 onHistory = { historyOpen = true }, onInsights = { insights("Overview") },
-                                onFood = { selected = Destination.MyFood.name }, historyActions = actions.history, containsSamples = activeFood.any { it.isDemo } || history.any { it.isDemo })
+                                onFood = { selected = Destination.MyFood.name }, historyActions = actions.history, reminderData = data.reminderData, reminderActions = actions.reminders, containsSamples = activeFood.any { it.isDemo } || history.any { it.isDemo })
                         }
                     }
                 }
