@@ -17,6 +17,7 @@ fun FreshCheckViewModel.integrationActions(scope: CoroutineScope, connected: Boo
         onScanRequest = ::onScanRequest,
         onScanClosed = ::onScanClosed,
         retryLoad = ::retryLoad,
+        onFoodOpened = ::foodOpened,
         food = FoodMutationActions(
             markUsed = { id, done -> complete(done) { markUsed(id) } },
             markDiscarded = { id, done -> complete(done) { markDiscarded(id) } },
@@ -28,6 +29,13 @@ fun FreshCheckViewModel.integrationActions(scope: CoroutineScope, connected: Boo
             delete = { id, done -> complete({ done(it == UiOperationResult.Confirmed) }) { deleteScan(id) } },
             canClear = connected,
             clear = { done -> complete({ done(it == UiOperationResult.Confirmed) }) { clearHistory() } }
+        ),
+        reminders = com.freshcheck.app.reminders.ReminderActions(
+            save = { draft, done -> scope.launch(Dispatchers.Main.immediate) { done(saveReminder(draft)) } },
+            disable = { id, done -> scope.launch(Dispatchers.Main.immediate) { done(disableReminder(id)) } },
+            delete = { id, done -> scope.launch(Dispatchers.Main.immediate) { done(deleteReminder(id)) } },
+            setPreferences = { value -> scope.launch(Dispatchers.Main.immediate) { setReminderPreferences(value) } },
+            refresh = ::refreshReminders
         ),
         saveScan = { submission, done -> complete(done) { saveScan(submission) } }
     )

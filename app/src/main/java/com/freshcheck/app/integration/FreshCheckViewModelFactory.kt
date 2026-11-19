@@ -13,7 +13,8 @@ class FreshCheckViewModelFactory(context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(FreshCheckViewModel::class.java))
         return FreshCheckViewModel(
-            repositoryProvider = { RoomFreshCheckRepository(FreshCheckDatabase.getInstance(applicationContext)) }
+            repositoryProvider = { RoomFreshCheckRepository(FreshCheckDatabase.getInstance(applicationContext)) },
+            reminderProvider = { com.freshcheck.app.reminders.ReminderGraph.get(applicationContext).coordinator }
         ) as T
     }
 }

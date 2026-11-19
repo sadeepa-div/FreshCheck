@@ -14,6 +14,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import java.time.Clock
+import com.freshcheck.app.reminders.*
 
 /** Display acceptance is deliberately different from confirmation of a database commit. */
 sealed interface AnalysisAcceptance {
@@ -25,7 +26,8 @@ sealed interface AnalysisAcceptance {
 class FreshCheckViewModel(
     private val repositoryProvider: () -> FreshCheckRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val clock: Clock = Clock.systemUTC()
+    private val clock: Clock = Clock.systemUTC(),
+    private val reminderProvider: (() -> ReminderCoordinator)? = null
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(AppUiData(isLoading = true))
     val uiState: StateFlow<AppUiData> = mutableState.asStateFlow()
@@ -39,7 +41,83 @@ class FreshCheckViewModel(
     private var readError: String? = null
     private var commandError: String? = null
 
-    init { retryLoad() }
+    private val reminderMutable = MutableStateFlow(ReminderUiData())
+    val reminderUi: StateFlow<ReminderUiData> = reminderMutable.asStateFlow()
+    private var reminderCoordinator: ReminderCoordinator? = null
+    private var reminderObservation: Job? = null
+
+    init { retryLoad(); initializeReminders() }
+
+    private fun initializeReminders() {
+        if (reminderProvider == null || reminderObservation?.isActive == true) return
+        reminderObservation = viewModelScope.launch {
+            try {
+                val coordinator = reminderCoordinator ?: withContext(ioDispatcher) { reminderProvider.invoke() }
+                    .also { reminderCoordinator = it }
+                val issue = withContext(ioDispatcher) { coordinator.reconcile() }
+                reminderMutable.update { it.copy(error = issue) }
+                coordinator.changes.conflate().map { withContext(ioDispatcher) { coordinator.snapshot() } }.collect { snapshot ->
+                    reminderMutable.update { snapshot.copy(busy = it.busy, error = it.error) }
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                reminderMutable.update { it.copy(error = "Reminder service could not load. Refresh to retry.", ready = false) }
+            }
+        }
+    }
+
+    fun refreshReminders() {
+        val coordinator = reminderCoordinator
+        if (coordinator == null) { initializeReminders(); return }
+        viewModelScope.launch {
+            try {
+                val error = withContext(ioDispatcher) { coordinator.reconcile() }
+                val snapshot = withContext(ioDispatcher) { coordinator.snapshot() }
+                reminderMutable.update { snapshot.copy(busy = it.busy, error = error) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { reminderMutable.update { it.copy(error = "Reminder reconciliation could not finish. Retry.") } }
+        }
+    }
+
+    suspend fun saveReminder(draft: ReminderDraft) = reminderCommand { it.save(draft) }
+    suspend fun disableReminder(id: String) = reminderCommand { it.disable(id) }
+    suspend fun deleteReminder(id: String) = reminderCommand { it.delete(id) }
+    suspend fun setReminderPreferences(value: ReminderPreferences) = reminderCommand {
+        val error = it.setPreferences(value)
+        ReminderResult(true, false, error ?: "Preferences saved. Scheduling still depends on Android permission and channel settings.", error = error)
+    }
+
+    private suspend fun reminderCommand(block: suspend (ReminderCoordinator) -> ReminderResult): ReminderResult =
+        withContext(Dispatchers.Main.immediate) {
+            val coordinator = reminderCoordinator
+                ?: return@withContext ReminderResult(false, false, "Reminder service is still loading.")
+            if (!mutation.tryLock()) return@withContext ReminderResult(false, false, "Another operation is in progress.")
+            reminderMutable.update { it.copy(busy = true) }
+            try {
+                val result = withContext(ioDispatcher) { block(coordinator) }
+                val snapshot = withContext(ioDispatcher) { coordinator.snapshot() }
+                reminderMutable.value = snapshot.copy(error = result.error ?: if (!result.saved) result.message else null)
+                result
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                reminderMutable.update { it.copy(error = "Reminder operation was not fully confirmed. Refresh saved state.") }
+                ReminderResult(false, false, "Reminder operation was not fully confirmed. Refresh saved state.")
+            } finally {
+                reminderMutable.update { it.copy(busy = false) }
+                mutation.unlock()
+            }
+        }
+
+    fun openNotificationFood(target: NotificationFoodTarget): Boolean {
+        if (!mutableState.value.inventoryConnected) return false
+        if (!ReminderRules.realId(target.foodId) || mutableState.value.activeFood.none { it.id == target.foodId && !it.isDemo }) {
+            failed("The food item from this reminder is no longer active or available.")
+            return false
+        }
+        mutableState.update { it.copy(foodToOpen = target) }
+        return true
+    }
+    fun foodOpened() { mutableState.update { it.copy(foodToOpen = null) } }
 
     /** Explicit retry retains last-known records; an error is never mapped to demo or empty success. */
     fun retryLoad() {
@@ -195,8 +273,13 @@ class FreshCheckViewModel(
             val result = withContext(ioDispatcher) { block(source) }
             when (result) {
                 is DatabaseResult.Success -> {
-                    commandError = null
-                    mutableState.update { it.copy(error = readError) }
+                    commandError = try {
+                        withContext(ioDispatcher) { reminderCoordinator?.reconcile() }?.let {
+                            "Change saved. Reminder reconciliation needs attention: $it"
+                        }
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (failure: Exception) { "Change saved. Reminder cancellation could not be confirmed; refresh reminders." }
+                    mutableState.update { it.copy(error = readError ?: commandError) }
                     UiOperationResult.Confirmed
                 }
                 is DatabaseResult.Failure -> failed(result.message)

@@ -14,7 +14,9 @@ data class AppUiData(
     val completedAnalysis: ScanSubmission? = null,
     val nutritionProfile: com.freshcheck.app.ui.nutrition.NutritionProfile? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val reminderData: com.freshcheck.app.reminders.ReminderUiData = com.freshcheck.app.reminders.ReminderUiData(),
+    val foodToOpen: com.freshcheck.app.reminders.NotificationFoodTarget? = null
 )
 sealed interface UiOperationResult {
     data object Confirmed : UiOperationResult
@@ -35,5 +37,7 @@ data class AppIntegrationActions(
         done(UiOperationResult.Failed("Scan persistence integration pending. Nothing saved."))
     },
     val onScanClosed: () -> Unit = {},
-    val retryLoad: () -> Unit = {}
+    val retryLoad: () -> Unit = {},
+    val reminders: com.freshcheck.app.reminders.ReminderActions = com.freshcheck.app.reminders.ReminderActions(),
+    val onFoodOpened: () -> Unit = {}
 )
