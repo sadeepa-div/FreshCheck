@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
 import java.time.Instant
 import java.util.UUID
 
-/** Neither value means that an OS job or notification has been scheduled. */
-enum class ReminderState { DefinitionOnly, Disabled }
+/** Status is not proof of current OS permission or on-screen presentation. Claimed is terminal after a crash. */
+enum class ReminderState { DefinitionOnly, Disabled, Enqueued, Blocked, Claimed, Posted, Failed }
 
 @Entity(
     tableName = "reminders",
