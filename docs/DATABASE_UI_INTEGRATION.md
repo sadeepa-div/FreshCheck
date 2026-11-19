@@ -1,5 +1,9 @@
 # Phase 2 — Database and UI integration
 
+Historical Phase 2 scope and results follow. Member 3 Phase 3 now adds real reminder scheduling
+and notification UI; see [REMINDER_NOTIFICATIONS.md](REMINDER_NOTIFICATIONS.md). The Phase 1/2
+inventory, scan and outcome contracts and database retention rules remain in place.
+
 ## Delivered scope
 
 MainActivity now launches FreshCheckRoute. The existing FreshCheckApp and feature screens

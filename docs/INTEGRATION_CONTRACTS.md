@@ -56,9 +56,10 @@ Assign the real scan ID in the persistence layer, return confirmation only after
 Never persist isDemo results.
 
 HistoryActions is reused for individual deletion/clearing capabilities. Keep capabilities false until repository operations can confirm completion.
-Reminder actions/settings remain pending: connect permission, channel, stored reminder and scheduler states separately. A re-check date is not proof of scheduling.
-No reminder service is implemented by the UI phase. The separate Member 3 Phase 1 Room foundation
-stores reminder definitions only. Phase 2 persists re-check edits and disables stale definitions atomically; notifications remain unconnected.
+Member 3 Phase 3 now connects reminder actions/settings, persistent switches, WorkManager and permission/channel-aware notifications.
+See [REMINDER_NOTIFICATIONS.md](REMINDER_NOTIFICATIONS.md) for lifecycle, consistency, tap navigation and validation.
+A saved re-check date or enabled flag is not proof of enqueued work or displayed notification.
+AppUiData.reminderData and AppIntegrationActions.reminders supply the separate reminder UI boundary.
 
 ## Async behavior and lifecycle
 
