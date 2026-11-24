@@ -18,13 +18,14 @@ import androidx.compose.ui.unit.dp
 import com.freshcheck.app.ui.components.*
 import com.freshcheck.app.ui.result.*
 
-/** Stateless integration surface. No permission, camera, gallery or inference work occurs here. */
+/** Stateless integration surface. Permission content is supplied by the scanner's state owner. */
 @Composable
 fun ScanScreen(
     mode: ScanMode, onMode: (ScanMode) -> Unit,
     state: ScannerUiState, actions: ScannerActions,
     demoCondition: FreshnessCondition, onDemoCondition: (FreshnessCondition) -> Unit,
     onDemo: () -> Unit,
+    permissionContent: @Composable () -> Unit = {},
     preview: @Composable BoxScope.() -> Unit = {}
 ) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -43,6 +44,7 @@ fun ScanScreen(
             }
         }
         AnimatedContent(mode, label = "Scan mode") { Text(it.explanation, style = MaterialTheme.typography.bodyMedium) }
+        permissionContent()
         Box(Modifier.fillMaxWidth().heightIn(min = 300.dp).height(340.dp)
             .background(Color(0xFF10291E), RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) {
             preview()
@@ -61,7 +63,7 @@ fun ScanScreen(
             style = MaterialTheme.typography.bodyMedium)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(actions.onSelectImage, enabled = state.cameraReady && !state.isAnalyzing) { Text("Gallery") }
+            OutlinedButton(actions.onSelectImage, enabled = !state.isAnalyzing) { Text("Gallery") }
             FilledIconButton(actions.onCapture, enabled = state.cameraReady && !state.isAnalyzing,
                 modifier = Modifier.size(72.dp).semantics { contentDescription = "Capture produce image · camera integration pending" }, shape = CircleShape) { Text("●", style = MaterialTheme.typography.headlineLarge) }
             OutlinedButton({}, enabled = false) { Text("Flash off") }
