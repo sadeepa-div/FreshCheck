@@ -26,6 +26,7 @@ fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit
     onNewRequest: () -> Unit = {},
     onSubmit: (ScanSubmission, (UiOperationResult) -> Unit) -> Unit = { _, done -> done(UiOperationResult.Failed("Scan persistence integration pending. Nothing saved.")) }) {
     val mode = ScanMode.entries.firstOrNull { it.label == modeLabel } ?: ScanMode.BeforeBuying
+    val cameraPermission = rememberCameraPermissionHandler()
     var stage by rememberSaveable { mutableStateOf("scanner") }
     var conditionName by rememberSaveable { mutableStateOf(FreshnessCondition.Fresh.name) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,8 +65,10 @@ fun ScannerFlow(modeLabel: String, onMode: (String) -> Unit, onClose: () -> Unit
             ), rescanFoodId = submission.rescanFoodId)
         } else ScanScreen(mode, { onMode(it.label) },
             ScannerUiState(isAnalyzing = stage == "loading"),
-            ScannerActions({}, {}, onClose), condition, { conditionName = it.name },
-            onDemo = { stage = "loading" })
+            ScannerActions({}, { message = "Gallery selection is not connected yet. No image was selected." }, onClose),
+            condition, { conditionName = it.name },
+            onDemo = { stage = "loading" },
+            permissionContent = { CameraPermissionPanel(cameraPermission, enabled = stage != "loading") })
     }
     message?.let {
         AlertDialog(onDismissRequest = { message = null }, title = { Text("Coming soon") },
